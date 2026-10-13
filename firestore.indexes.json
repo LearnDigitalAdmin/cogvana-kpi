@@ -1,0 +1,50 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "kpi_values",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "grain", "order": "ASCENDING" },
+        { "fieldPath": "periodStart", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "kpi_values",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "grain", "order": "ASCENDING" },
+        { "fieldPath": "platform", "order": "ASCENDING" },
+        { "fieldPath": "periodStart", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "kpi_values",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "grain", "order": "ASCENDING" },
+        { "fieldPath": "kpiId", "order": "ASCENDING" },
+        { "fieldPath": "periodStart", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "kpi_values",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "grain", "order": "ASCENDING" },
+        { "fieldPath": "platform", "order": "ASCENDING" },
+        { "fieldPath": "kpiId", "order": "ASCENDING" },
+        { "fieldPath": "periodStart", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "kpi_runs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "collector", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "startedAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

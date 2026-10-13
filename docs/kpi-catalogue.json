@@ -1,0 +1,3239 @@
+[
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "chargeType",
+      "stream"
+    ],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "all",
+    "owner": "Sam",
+    "id": "pay.attempts",
+    "name": "Payment attempts",
+    "description": "Payments initiated in the day, any outcome.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of payment records created on the day (Nairobi), across all charge types of the platform.",
+    "decision": "Shows demand per product line; a drop with stable users points to a checkout problem."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "chargeType",
+      "stream"
+    ],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "all",
+    "owner": "Sam",
+    "id": "pay.success",
+    "name": "Successful payments",
+    "description": "Initiated payments that completed successfully.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of initiated payments whose status is success.",
+    "decision": "Baseline for revenue trend and success rate."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "chargeType",
+      "stream"
+    ],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "all",
+    "owner": "Sam",
+    "id": "pay.failed",
+    "name": "Failed payments",
+    "description": "Initiated payments that ended in failure.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of initiated payments whose status is failed (charge.failed or equivalent).",
+    "decision": "Investigate provider or UX issues; contact affected customers."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "chargeType",
+      "stream"
+    ],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "all",
+    "owner": "Sam",
+    "id": "pay.stuck_pending",
+    "name": "Stuck pending payments",
+    "description": "Payments still pending long after initiation (abandoned prompts or missed webhooks).",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of initiated payments still pending more than 30 minutes after initiation, at compute time.",
+    "decision": "Reconcile against Paystack; a spike suggests missed webhooks."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "chargeType",
+      "stream"
+    ],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "all",
+    "owner": "Sam",
+    "id": "pay.success_rate",
+    "name": "Payment success rate",
+    "description": "Share of initiated payments that succeeded (checkout conversion).",
+    "type": "ratio",
+    "unit": "percent",
+    "formula": "success / attempts x 100. Abandoned prompts count as unsuccessful.",
+    "numeratorDesc": "Successful payments",
+    "denominatorDesc": "Payment attempts",
+    "decision": "Fix payments before spending on acquisition."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "chargeType",
+      "stream"
+    ],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "all",
+    "owner": "Sam",
+    "id": "pay.gmv",
+    "name": "GMV (money charged)",
+    "description": "Gross money charged to payers on successful payments, including gateway fees and money that belongs to customers.",
+    "type": "flow",
+    "unit": "KES_CENTS",
+    "formula": "Sum of the gross amount charged on successful payments. Not company revenue.",
+    "decision": "Scale of money moving through the platforms."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "chargeType",
+      "stream"
+    ],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "all",
+    "owner": "Sam",
+    "id": "pay.gateway_fees",
+    "name": "Gateway fees",
+    "description": "Paystack fees on successful payments where recorded.",
+    "type": "flow",
+    "unit": "KES_CENTS",
+    "formula": "Sum of recorded Paystack fees on successful payments. Chama top-ups, plans and reports do not record fees and add 0.",
+    "decision": "Cost of collecting; input for pricing."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "chargeType",
+      "stream"
+    ],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "all",
+    "owner": "Sam",
+    "id": "pay.platform_revenue",
+    "name": "Platform revenue",
+    "description": "What the company earns on successful payments before gateway costs and pass-throughs.",
+    "type": "flow",
+    "unit": "KES_CENTS",
+    "formula": "PMS rent: commission cut. Cyber: platform commission. SMS / reports / plans / subscriptions: amount sold. Chama member payments: our fee (markup).",
+    "decision": "Real size of the business by revenue stream."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "chargeType",
+      "stream"
+    ],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "all",
+    "owner": "Sam",
+    "id": "pay.pass_through",
+    "name": "Pass-through (agent share)",
+    "description": "Portion of billed revenue owed onward, currently the agent share on PMS subscriptions.",
+    "type": "flow",
+    "unit": "KES_CENTS",
+    "formula": "45% of (gross - gateway fee) on PMS subscriptions that carry an agent.",
+    "decision": "Cost of the agent channel."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "chargeType",
+      "stream"
+    ],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "all",
+    "owner": "Sam",
+    "id": "pay.net_revenue",
+    "caveat": "Part of this rests on estimates; see \"Net revenue not fully verified\".",
+    "name": "Net revenue",
+    "description": "Company revenue after gateway costs it bears and pass-throughs.",
+    "type": "flow",
+    "unit": "KES_CENTS",
+    "formula": "SMS and report sales: amount received after Paystack fee. Subscriptions: (gross - fee) less agent share. Rent commission, Cyber commission, Chama markup: the commission itself. Chama SMS / plan / report sales: amount sold (fee not recorded).",
+    "decision": "Whether growth is profitable."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "chargeType",
+      "stream"
+    ],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "all",
+    "owner": "Sam",
+    "id": "pay.net_revenue_unverified",
+    "caveat": "Rent commission derived from a rate, or sales whose gateway fee is not recorded.",
+    "name": "Net revenue not fully verified",
+    "description": "Part of net revenue that rests on an estimate: rent commission derived from tier rate, or gateway fee not recorded.",
+    "type": "flow",
+    "unit": "KES_CENTS",
+    "formula": "Net revenue from payments whose basis is rate_estimate or gross_fee_unknown.",
+    "decision": "Shrink to zero by recording actual split/fee amounts at source."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "db",
+      "counter"
+    ],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "all",
+    "owner": "Sam",
+    "id": "pay.stats_counter",
+    "name": "PAY running counters (snapshot)",
+    "description": "Daily snapshot of the running totals PAY keeps in platform_stats/totals, which have no history of their own.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Value of one platform_stats/totals field at snapshot time. Dimensions: db (default|register) and counter (field name). Revenue counters are in KES, not cents.",
+    "decision": "Reconciliation check for the adapters; history for trends."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.schools_new",
+    "name": "New schools",
+    "description": "Schools that signed up on the day.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of school records created on the day (Nairobi).",
+    "decision": "Acquisition pace; compare with term-start dates."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.students_new",
+    "name": "New students",
+    "description": "Student records created on the day (imports create many at once).",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of student records created on the day (Nairobi).",
+    "decision": "Spot large imports and term-start load."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.schools_total",
+    "name": "Schools (total)",
+    "description": "Schools registered at snapshot time.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Count of school records at 23:55 Nairobi.",
+    "decision": "Size of the customer base."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.teachers_total",
+    "name": "Teacher accounts",
+    "description": "User accounts with the teacher role at snapshot time.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Count of users with role teacherAdmin at 23:55 Nairobi.",
+    "decision": "Teachers per school shows how deeply schools have rolled out."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.school_admins_total",
+    "name": "School admin accounts",
+    "description": "User accounts with the school admin role at snapshot time.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Count of users with role schoolAdmin at 23:55 Nairobi.",
+    "decision": "Cross-check against schools total."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.students_total",
+    "name": "Active students",
+    "description": "Students on the books (not graduated or archived) at snapshot time.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Count of student records minus those flagged archived, at 23:55 Nairobi.",
+    "decision": "Base for SMS volume; drives token demand."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.tokens_outstanding",
+    "name": "Unspent SMS tokens",
+    "description": "Prepaid tokens held by all users and not yet used: customers' unspent credit.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Sum of messageTokens across all users at 23:55 Nairobi (includes tokens allocated to teachers).",
+    "decision": "Sold-but-unused credit; a pile that keeps growing means schools buy but do not send."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.schedules_waiting_tokens",
+    "name": "Scheduled messages waiting for tokens",
+    "description": "Scheduled messages stalled because the funding account ran out of tokens.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Count of scheduled messages with status insufficientTokens at 23:55 Nairobi.",
+    "decision": "Each one is a school ready to pay: contact them for a top-up."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.registers_marked",
+    "name": "Registers marked by teachers",
+    "description": "Class registers a teacher actually saved for the day.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of register records for the school day with locked = true.",
+    "decision": "Core product usage."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.registers_auto_unmarked",
+    "name": "Registers left unmarked",
+    "description": "Classes nobody marked by noon; the system wrote a placeholder.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of register records for the school day written by the system and never marked by a teacher.",
+    "decision": "Schools with repeated unmarked classes need onboarding help."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.register_marking_rate",
+    "name": "Register marking rate",
+    "description": "Share of the day's registers that a teacher marked.",
+    "type": "ratio",
+    "unit": "percent",
+    "formula": "Marked registers / all register records for the school day x 100. Classes that are marked late still count once marked (recomputed nightly).",
+    "numeratorDesc": "Registers marked by teachers",
+    "denominatorDesc": "All register records for the day",
+    "decision": "Falling rate means teachers are dropping the habit."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.students_attended",
+    "name": "Students attended",
+    "description": "Students marked present or late, in teacher-marked registers.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Sum of present + late across marked registers for the school day.",
+    "decision": "Volume behind attendance rate."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.students_absent",
+    "name": "Students absent",
+    "description": "Students marked absent, in teacher-marked registers.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Sum of absent across marked registers for the school day.",
+    "decision": "Drives absence SMS volume to parents."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.students_excused",
+    "name": "Students excused",
+    "description": "Students marked excused, in teacher-marked registers.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Sum of excused across marked registers for the school day.",
+    "decision": "Completes the attendance picture."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.attendance_rate",
+    "name": "Attendance rate",
+    "description": "Share of marked students who attended.",
+    "type": "ratio",
+    "unit": "percent",
+    "formula": "(present + late) / (present + late + absent + excused) x 100, marked registers only; unmarked students excluded.",
+    "numeratorDesc": "Students attended",
+    "denominatorDesc": "Students marked (attended + absent + excused)",
+    "decision": "Sanity check on data quality; implausible values mean misuse."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily",
+      "weekly",
+      "monthly"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.schools_marking",
+    "name": "Active schools (marking)",
+    "description": "Distinct schools with at least one teacher-marked register in the period. The headline adoption number.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Distinct schools with a marked register (locked = true) on any school day in the period. Daily, weekly (Mon-Sun) and calendar-month values.",
+    "decision": "Real adoption versus sign-ups; the gap is your onboarding backlog."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily",
+      "weekly",
+      "monthly"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.schools_messaging",
+    "name": "Active schools (messaging)",
+    "description": "Distinct schools that sent at least one SMS in the period.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Distinct schools with a message recorded as sent or partial in the period. Daily, weekly and monthly values.",
+    "decision": "Only messaging schools consume tokens: this is the revenue-relevant base."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily",
+      "weekly",
+      "monthly"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.schools_purchasing",
+    "name": "Schools buying tokens",
+    "description": "Distinct schools with at least one successful SMS top-up in the period.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Distinct schools with a successful top-up initiated in the period. Daily, weekly and monthly values.",
+    "decision": "Compare with messaging schools to see conversion and repeat buying."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.sms_messages_sent",
+    "name": "Messages sent",
+    "description": "Messages that went out (sent or partially sent).",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of message records with status sent or partial (includes scheduled sends).",
+    "decision": "Product usage beyond attendance."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.sms_messages_failed",
+    "name": "Messages failed",
+    "description": "Messages that failed for reasons other than running out of tokens.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of message records with status failed that are not token blocks.",
+    "decision": "Investigate provider or data problems."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.sms_blocked_no_tokens",
+    "caveat": "Inferred from the failed-with-zeros signature; no stored flag.",
+    "name": "Sends blocked: no tokens",
+    "description": "Automatic attendance messages that could not go out because the sender had too few tokens (inferred).",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of failed message records with zero segments, zero tokens used and zero delivered: the signature of the app's insufficient-tokens block. Inferred, not a stored flag.",
+    "decision": "Each is a school that wanted to send and could not: your best top-up nudge list."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.sms_success_rate",
+    "name": "Message success rate",
+    "description": "Share of messages that reached the provider that were fully sent.",
+    "type": "ratio",
+    "unit": "percent",
+    "formula": "sent / (sent + partial + failed) x 100. Token blocks are excluded (they never reached the provider).",
+    "numeratorDesc": "Messages with status sent",
+    "denominatorDesc": "Messages sent, partial or failed (not blocked)",
+    "decision": "Falling rate points at provider, phone-number or content problems."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.sms_recipients",
+    "name": "SMS recipients",
+    "description": "Parent or teacher recipients reached by sent and partial messages.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Sum of delivered (falling back to recipient count) over messages with status sent or partial.",
+    "decision": "Volume behind token consumption."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.sms_tokens_used",
+    "caveat": "Estimate: tokens are deducted and logged by the browser.",
+    "name": "Tokens used",
+    "description": "Tokens deducted for messages recorded on the day. An estimate: deduction and logging happen in the browser.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Sum of tokensUsed over all message records for the day.",
+    "decision": "Burn rate; pair with tokens sold to predict top-ups."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.sms_scheduled_messages",
+    "name": "Scheduled messages sent",
+    "description": "Messages sent by the scheduler rather than manually.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of sent or partial message records that carry a scheduleId.",
+    "decision": "Adoption of the automation feature."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.sms_log_sent",
+    "name": "Provider calls accepted",
+    "description": "Send calls the SMS provider accepted (server log; acceptance, not handset delivery).",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of server SMS log records with status sent.",
+    "decision": "Independent of the browser-written message log."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.sms_log_failed",
+    "name": "Provider calls failed",
+    "description": "Send calls the SMS provider rejected or that errored.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of server SMS log records with status failed.",
+    "decision": "Spikes mean credentials, balance or provider trouble: check the provider first."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.sms_provider_success_rate",
+    "name": "Provider success rate",
+    "description": "Share of provider calls that were accepted.",
+    "type": "ratio",
+    "unit": "percent",
+    "formula": "sent / (sent + failed) x 100 over the server SMS log. Pending calls are excluded.",
+    "numeratorDesc": "Provider calls accepted",
+    "denominatorDesc": "Provider calls accepted or failed",
+    "decision": "Operational health of the SMS channel."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "register",
+    "owner": "Sam",
+    "id": "register.tokens_sold",
+    "name": "Tokens sold",
+    "description": "SMS tokens bought on successful top-ups (money is in the PAY KPIs).",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Sum of tokens on successful top-ups initiated on the day.",
+    "decision": "Volume behind SMS revenue; compare with tokens used."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.chamas_new",
+    "name": "New chamas",
+    "description": "Chamas created on the day.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of chama records created on the day (Nairobi).",
+    "decision": "Acquisition pace."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.members_new",
+    "name": "New members",
+    "description": "Member records added on the day.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of member records created on the day across all chamas.",
+    "decision": "Network growth inside existing chamas."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.contribution_volume",
+    "name": "Contribution volume",
+    "description": "Contributions received into chamas.",
+    "type": "flow",
+    "unit": "KES_CENTS",
+    "formula": "Sum of amount on ledger rows of type contribution (money in).",
+    "decision": "Core money handled by the product."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.contribution_count",
+    "name": "Contributions received",
+    "description": "Number of contribution payments.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of ledger rows of type contribution.",
+    "decision": "Activity behind the volume."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.loan_repayment_volume",
+    "name": "Loan repayments",
+    "description": "Loan repayments received.",
+    "type": "flow",
+    "unit": "KES_CENTS",
+    "formula": "Sum of amount on ledger rows of type loan_repayment.",
+    "decision": "Loan book cash flow."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.loans_disbursed_volume",
+    "name": "Loans disbursed",
+    "description": "Loan money paid out to members.",
+    "type": "flow",
+    "unit": "KES_CENTS",
+    "formula": "Sum of amount on ledger rows of type loan_disbursement.",
+    "decision": "Lending appetite versus repayments."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.mgr_contribution_volume",
+    "name": "Merry-go-round contributions",
+    "description": "Contributions into merry-go-round pots.",
+    "type": "flow",
+    "unit": "KES_CENTS",
+    "formula": "Sum of amount on ledger rows of type mgr_contribution.",
+    "decision": "Adoption of the MGR feature."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.mgr_payout_volume",
+    "name": "Merry-go-round payouts",
+    "description": "Pot money paid out to members.",
+    "type": "flow",
+    "unit": "KES_CENTS",
+    "formula": "Sum of amount on ledger rows of type mgr_payout.",
+    "decision": "Cross-check against MGR contributions."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.money_in_volume",
+    "name": "Total money in",
+    "description": "All money received into chamas (contributions, repayments, MGR).",
+    "type": "flow",
+    "unit": "KES_CENTS",
+    "formula": "Sum of amount on ledger rows with direction in.",
+    "decision": "Headline money handled."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.digital_payment_share",
+    "caveat": "Rows with no payment method count as not digital.",
+    "name": "Digital payment share",
+    "description": "Share of money in that was paid through the platform (Paystack) rather than recorded manually.",
+    "type": "ratio",
+    "unit": "percent",
+    "formula": "Money in with method paystack / all money in x 100. Manual recordings earn the company nothing.",
+    "numeratorDesc": "Money in paid via Paystack",
+    "denominatorDesc": "All money in",
+    "decision": "The monetisable share of volume; raise it by pushing members to pay in-app or via WhatsApp."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.whatsapp_payment_share",
+    "name": "WhatsApp payment share",
+    "description": "Share of digital payments initiated on WhatsApp.",
+    "type": "ratio",
+    "unit": "percent",
+    "formula": "Paystack money-in rows with channel whatsapp / all Paystack money-in rows x 100.",
+    "numeratorDesc": "Paystack payments from WhatsApp",
+    "denominatorDesc": "All Paystack payments",
+    "decision": "Channel mix for product and support focus."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily",
+      "weekly",
+      "monthly"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.chamas_active",
+    "name": "Active chamas (money)",
+    "description": "Distinct chamas with at least one ledger transaction in the period. The headline adoption number.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Distinct chamas with any ledger row created in the period. Daily, weekly (Mon-Sun) and calendar-month values.",
+    "decision": "Real adoption versus sign-ups."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily",
+      "weekly",
+      "monthly"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.chamas_messaging",
+    "name": "Active chamas (SMS)",
+    "description": "Distinct chamas that sent an SMS in the period.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Distinct chamas with an SMS log entry in the period. Daily, weekly and monthly values.",
+    "decision": "SMS users are the revenue-relevant base for credits."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.sms_messages",
+    "name": "SMS campaigns sent",
+    "description": "Bulk SMS sends from chamas.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of SMS log entries.",
+    "decision": "Feature usage."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.sms_recipients_sent",
+    "name": "SMS delivered to provider",
+    "description": "Recipients the provider accepted.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Sum of sentCount over SMS log entries (acceptance, not handset delivery).",
+    "decision": "Volume behind credit use."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.sms_credits_used",
+    "name": "SMS credits used",
+    "description": "Credits spent on SMS.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Sum of creditsUsed over SMS log entries.",
+    "decision": "Burn rate; pair with credits sold (PAY) to predict top-ups."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.sms_delivery_rate",
+    "name": "SMS acceptance rate",
+    "description": "Share of intended recipients the provider accepted.",
+    "type": "ratio",
+    "unit": "percent",
+    "formula": "sentCount / recipientCount x 100 over SMS log entries.",
+    "numeratorDesc": "Recipients accepted",
+    "denominatorDesc": "Recipients intended",
+    "decision": "Falling rate points at bad numbers or provider trouble."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.chamas_total",
+    "name": "Chamas (total)",
+    "description": "Chamas registered at snapshot time.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Count of chama records.",
+    "decision": "Size of the customer base."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "plan"
+    ],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.chamas_by_plan",
+    "name": "Chamas by plan",
+    "description": "Chamas per subscription plan at snapshot time.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Count of chamas with each plan value. Dimension: plan (free, starter, basic, growth, max).",
+    "decision": "Conversion from Free to paid; plan mix."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.paid_plans_expiring_14d",
+    "caveat": "Plan expiry is a UTC date; Nairobi is 3 hours ahead.",
+    "name": "Plans expiring within 14 days",
+    "description": "Chamas whose plan expiry falls in the next 14 days.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Count of chamas with planExpiry from today through 14 days ahead.",
+    "decision": "Renewal outreach list; unrenewed ones are downgraded to Free."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.members_active",
+    "name": "Active members",
+    "description": "Members with active status across all chamas.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Count of member records with status active.",
+    "decision": "Size of the user base."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.sms_credits_outstanding",
+    "name": "Unspent SMS credits",
+    "description": "Prepaid SMS credits held by chamas.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Sum of smsCredits across chamas.",
+    "decision": "Sold-but-unused credit."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.report_credits_outstanding",
+    "name": "Unspent report credits",
+    "description": "Prepaid report credits held by chamas.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Sum of reportCreditsBalance across chamas.",
+    "decision": "Sold-but-unused credit."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.loans_active",
+    "name": "Open loans",
+    "description": "Disbursed loans still being repaid (active or overdue).",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Count of loans with status active or overdue.",
+    "decision": "Size of the loan book."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.loans_outstanding_balance",
+    "name": "Loan book outstanding",
+    "description": "Unpaid installments across open loans.",
+    "type": "stock",
+    "unit": "KES_CENTS",
+    "formula": "Sum over open loans of (installment due - paid) for installments not marked paid.",
+    "decision": "Money out on loan across chamas."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.loans_at_risk_count",
+    "name": "Loans past due",
+    "description": "Open loans with at least one installment past its due date.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Count of open loans with an unpaid installment whose due date is before today (Nairobi).",
+    "decision": "Chamas needing a repayment follow-up."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.loans_at_risk_balance",
+    "name": "Loan balance at risk",
+    "description": "Outstanding balance of loans that are past due.",
+    "type": "stock",
+    "unit": "KES_CENTS",
+    "formula": "Sum of outstanding balance over loans counted in loans past due.",
+    "decision": "Size of the repayment problem."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.portfolio_at_risk",
+    "name": "Portfolio at risk",
+    "description": "Share of the loan book that is past due.",
+    "type": "ratio",
+    "unit": "percent",
+    "formula": "Balance at risk / loan book outstanding x 100.",
+    "numeratorDesc": "Outstanding balance of past-due loans",
+    "denominatorDesc": "Loan book outstanding",
+    "decision": "Health of customers' lending; rising PAR means chamas are struggling."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.contributions_overdue_count",
+    "name": "Overdue contributions",
+    "description": "Contribution periods flagged overdue.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Count of contribution records with status overdue (set by the nightly sweep).",
+    "decision": "Collection health."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.contributions_overdue_amount",
+    "name": "Overdue contribution amount",
+    "description": "Unpaid part of overdue contributions.",
+    "type": "stock",
+    "unit": "KES_CENTS",
+    "formula": "Sum of (amount - paidAmount) over overdue contributions.",
+    "decision": "Money chamas are owed by their members."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.chamas_with_overdue_contributions",
+    "name": "Chamas with overdue contributions",
+    "description": "Chamas that have at least one overdue contribution.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Distinct chamas with an overdue contribution.",
+    "decision": "Chamas that may need reminders or support."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.mgr_pots_active",
+    "name": "Active merry-go-round pots",
+    "description": "Pots currently running.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Count of MGR pots with status active.",
+    "decision": "Adoption of the MGR feature."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.mgr_pending_shortfall",
+    "name": "MGR pending shortfall",
+    "description": "Amount active pots fell short by and have not covered.",
+    "type": "stock",
+    "unit": "KES_CENTS",
+    "formula": "Sum of pendingShortfall over active MGR pots.",
+    "decision": "Pots needing treasurer action."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.mgr_arrears_open_count",
+    "name": "Open MGR arrears",
+    "description": "Member arrears still open in active pots.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Count of arrears with status open across active pots.",
+    "decision": "Members behind on pot contributions."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "chama",
+    "owner": "Sam",
+    "id": "chama.mgr_arrears_open_amount",
+    "name": "Open MGR arrears amount",
+    "description": "Unsettled arrears amount in active pots.",
+    "type": "stock",
+    "unit": "KES_CENTS",
+    "formula": "Sum of (amount - settledAmount) over open arrears in active pots.",
+    "decision": "Money owed into pots."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.users_new",
+    "caveat": "As of last sync: accounts count once they reach the cloud.",
+    "name": "New property managers",
+    "description": "PMS accounts created on the day.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of PMS user records created on the day (Nairobi). Counted when the account reaches the cloud.",
+    "decision": "Acquisition pace."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.trials_started",
+    "name": "Trials started",
+    "description": "Free trials granted on the day.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of users whose trialStartedAt falls on the day.",
+    "decision": "Top of the conversion funnel."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.properties_new",
+    "name": "New properties",
+    "description": "Properties added on the day (as synced).",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of property records with createdAt on the day.",
+    "decision": "Depth of adoption per manager."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.tenants_new",
+    "name": "New tenants",
+    "description": "Tenants added on the day (as synced).",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of tenant records with createdAt on the day.",
+    "decision": "Growth of the managed base."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.invoices_issued",
+    "caveat": "As of last sync; recent days rise as devices sync.",
+    "name": "Invoices issued",
+    "description": "Rent invoices created on the day (as synced).",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of invoice records with createdAt on the day.",
+    "decision": "Core product usage."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.invoiced_amount",
+    "caveat": "As of last sync; recent days rise as devices sync.",
+    "name": "Amount invoiced",
+    "description": "Total value of invoices issued (rent plus utilities and charges).",
+    "type": "flow",
+    "unit": "KES_CENTS",
+    "formula": "Sum of totalAmount over invoices created on the day.",
+    "decision": "Rent flow managed through the product."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.payments_recorded",
+    "caveat": "As of last sync; recent days rise as devices sync.",
+    "name": "Payments recorded",
+    "description": "Rent payments recorded against invoices (manual or Paystack).",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of payment records with paymentDate on the day.",
+    "decision": "Collection activity."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.rent_collected",
+    "caveat": "As of last sync; recent days rise as devices sync.",
+    "name": "Rent collected (recorded)",
+    "description": "Rent money recorded as received by managers, whatever the method. Tenant money, not company revenue.",
+    "type": "flow",
+    "unit": "KES_CENTS",
+    "formula": "Sum of amount over payment records with paymentDate on the day. Compare with PAY rent GMV to see the digital share.",
+    "decision": "Total rent handled; the gap to Paystack rent is the monetisable opportunity."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily",
+      "weekly",
+      "monthly"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.managers_active",
+    "caveat": "As of last sync; recent periods rise as devices sync.",
+    "name": "Active property managers",
+    "description": "Distinct managers who issued an invoice or recorded a payment in the period. The headline adoption number.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Distinct userId across invoices created and payments recorded in the period. Daily, weekly (Mon-Sun) and calendar-month values; later syncs raise recent periods.",
+    "decision": "Real adoption versus sign-ups."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.users_total",
+    "name": "PMS accounts (total)",
+    "description": "PMS accounts in the cloud at snapshot time.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Count of user records that carry a PMS localId.",
+    "decision": "Size of the customer base."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "tier"
+    ],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.users_by_tier",
+    "name": "Accounts by tier",
+    "description": "PMS accounts per subscription tier.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Count of users with each tier value. Dimension: tier (free, low, business, enterprise; anything else is counted as other).",
+    "decision": "Plan mix and upgrade pressure."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.users_synced_7d",
+    "name": "Accounts synced in 7 days",
+    "description": "Accounts whose device synced in the last 7 days.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Count of users with lastSyncTime in the 7 days before the snapshot.",
+    "decision": "Live usage of the sync feature."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.paid_active",
+    "name": "Active paid accounts",
+    "description": "Paying managers with a subscription still valid.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Users with storage true, not on a trial, and subscriptionExpiry in the future.",
+    "decision": "Recurring revenue base."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.paid_expiring_14d",
+    "name": "Paid plans expiring in 14 days",
+    "description": "Active paid accounts whose subscription ends within 14 days.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Active paid accounts with subscriptionExpiry between now and 14 days ahead.",
+    "decision": "Renewal outreach list."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.paid_lapsed_14d",
+    "name": "Paid plans lapsed in last 14 days",
+    "description": "Paid accounts whose subscription ended in the last 14 days and has not been renewed.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Users with storage true, not on a trial, and subscriptionExpiry in the 14 days before the snapshot.",
+    "decision": "Win-back list; early churn signal."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.paid_stale_sync_7d",
+    "name": "Paid accounts not syncing",
+    "description": "Paid accounts with no sync in 7 days or never synced.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Users with storage true whose lastSyncTime is missing or older than 7 days.",
+    "decision": "Support before they churn; stale data also understates every PMS KPI."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.trials_active",
+    "name": "Active trials",
+    "description": "Trials still running.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Users with isTrial true and subscriptionExpiry in the future.",
+    "decision": "Follow-up list for onboarding."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.trials_expiring_7d",
+    "name": "Trials ending in 7 days",
+    "description": "Running trials ending within 7 days.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Active trials with subscriptionExpiry within the next 7 days.",
+    "decision": "Conversion calls."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.trials_awaiting_downgrade",
+    "name": "Expired trials not yet downgraded",
+    "description": "Trials past their end date still flagged as trials (downgrade job runs weekly on Mondays).",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Users with isTrial true and subscriptionExpiry in the past.",
+    "decision": "Explains apparent premium users; clears every Monday."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.trial_conversion_rate",
+    "name": "Trial to paid conversion",
+    "description": "Share of accounts that ever had a trial and later paid.",
+    "type": "ratio",
+    "unit": "percent",
+    "formula": "Users with trialStartedAt whose lastPaymentDate is on or after it / users with trialStartedAt x 100. All-time cohort.",
+    "numeratorDesc": "Trial accounts that later paid",
+    "denominatorDesc": "Accounts that ever had a trial",
+    "decision": "Onboarding and pricing effectiveness."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.tokens_outstanding",
+    "caveat": "Balance only: SMS consumption is not synced to the cloud.",
+    "name": "Unspent SMS tokens",
+    "description": "Prepaid PMS SMS tokens held by managers. Consumption is not synced to the cloud, so only the balance is visible.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Sum of messageTokens across PMS users.",
+    "decision": "Sold-but-unused credit."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.properties_total",
+    "name": "Properties (total)",
+    "description": "Properties synced to the cloud.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Count of property records.",
+    "decision": "Managed portfolio size."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.tenants_active",
+    "name": "Active tenants",
+    "description": "Tenants flagged active.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Count of tenant records with isActive true.",
+    "decision": "Managed households."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.units_total",
+    "name": "Units (total)",
+    "description": "Rentable units synced to the cloud.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Count of unit records.",
+    "decision": "Capacity under management."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.units_occupied",
+    "name": "Units occupied",
+    "description": "Units flagged occupied.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Count of unit records with isOccupied true.",
+    "decision": "Basis of occupancy."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.occupancy_rate",
+    "name": "Occupancy rate",
+    "description": "Share of units occupied.",
+    "type": "ratio",
+    "unit": "percent",
+    "formula": "Occupied units / total units x 100.",
+    "numeratorDesc": "Units occupied",
+    "denominatorDesc": "Units total",
+    "decision": "Customer success signal; falling occupancy hurts rent collected and renewals."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.invoices_unpaid_count",
+    "name": "Unpaid invoices",
+    "description": "Invoices PMS has not yet marked paid, as synced. PMS marks an invoice paid once 40% or more of it is paid.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Count of invoices with isPaid false (below the 40% paid threshold PMS uses).",
+    "decision": "Collection workload for managers."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.receivables_outstanding",
+    "caveat": "As of last sync; excludes invoices PMS already marked paid at 40%.",
+    "name": "Rent outstanding",
+    "description": "Unpaid part of invoices PMS has not yet marked paid (below the 40% paid threshold).",
+    "type": "stock",
+    "unit": "KES_CENTS",
+    "formula": "Sum of (totalAmount - amountPaid) over invoices with isPaid false. Invoices that are 40-99% paid are marked paid by PMS and are not counted.",
+    "decision": "Money tenants owe across the portfolio."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.invoices_overdue_count",
+    "name": "Overdue invoices",
+    "description": "Invoices not yet marked paid that are past their due date.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Count of invoices with isPaid false and dueDate before today (Nairobi).",
+    "decision": "Arrears follow-up."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.receivables_overdue",
+    "name": "Rent overdue",
+    "description": "Unpaid amount on invoices past due.",
+    "type": "stock",
+    "unit": "KES_CENTS",
+    "formula": "Sum of (totalAmount - amountPaid) over invoices with isPaid false and dueDate before today.",
+    "decision": "Size of the arrears problem."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "month"
+    ],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "pms",
+    "owner": "Sam",
+    "id": "pms.collection_rate",
+    "caveat": "As of last sync; a billing month matures as tenants pay.",
+    "name": "Rent collection rate (billing month)",
+    "description": "Share of a billing month's invoiced rent that has been paid so far. Emitted for the current and previous billing month.",
+    "type": "ratio",
+    "unit": "percent",
+    "formula": "Sum of amountPaid / sum of totalAmount x 100 over invoices with billingMonth equal to the month. Dimension: month (YYYY-MM). Matures as tenants pay.",
+    "numeratorDesc": "Amount paid on the month's invoices",
+    "denominatorDesc": "Amount invoiced for the month",
+    "decision": "Core outcome for property managers; low rates predict churn."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "cyber",
+    "owner": "Sam",
+    "id": "cyber.wa_messages_in",
+    "name": "WhatsApp messages received",
+    "description": "Inbound messages the bot processed.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Meter field inbound for the Nairobi day.",
+    "decision": "Bot demand."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "cyber",
+    "owner": "Sam",
+    "id": "cyber.wa_messages_out",
+    "name": "WhatsApp messages sent",
+    "description": "Outbound messages the bot sent (replies and notifications).",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Meter field outbound for the day.",
+    "decision": "Cloud API volume and cost driver."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "cyber",
+    "owner": "Sam",
+    "id": "cyber.wa_messages_out_failed",
+    "name": "WhatsApp sends failed",
+    "description": "Outbound messages the WhatsApp API rejected or that errored.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Meter field outboundFailed for the day.",
+    "decision": "Spikes mean token, template or API trouble: fix first."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "cyber",
+    "owner": "Sam",
+    "id": "cyber.wa_delivery_success_rate",
+    "name": "WhatsApp send success rate",
+    "description": "Share of outbound messages accepted by the WhatsApp API.",
+    "type": "ratio",
+    "unit": "percent",
+    "formula": "(outbound - outboundFailed) / outbound x 100.",
+    "numeratorDesc": "Outbound accepted",
+    "denominatorDesc": "Outbound attempted",
+    "decision": "Operational health of the channel."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "cyber",
+    "owner": "Sam",
+    "id": "cyber.wa_sessions_started",
+    "name": "WhatsApp conversations started",
+    "description": "New conversation sessions (a session ends after 30 idle minutes).",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Meter field sessionsStarted for the day.",
+    "decision": "How often people come back to the bot."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily",
+      "weekly",
+      "monthly"
+    ],
+    "scope": "platform",
+    "platform": "cyber",
+    "owner": "Sam",
+    "id": "cyber.wa_users_active",
+    "name": "Active WhatsApp users",
+    "description": "Distinct people who messaged the bot in the period. The headline Cyber usage number.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Distinct hashed-phone keys in the meter's users map over the period. Daily, weekly (Mon-Sun) and monthly values.",
+    "decision": "Real usage; compare with Cyber sign-ups."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "cyber",
+    "owner": "Sam",
+    "id": "cyber.wa_users_seen",
+    "caveat": "Approximate: each phone counts once, at its latest activity.",
+    "name": "WhatsApp users seen (approx.)",
+    "description": "Phones whose latest session activity falls on the day. Understates: a returning user moves to a later day.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of whatsapp_sessions documents with lastActive on the day. Approximate; superseded by active users once the meter is live.",
+    "decision": "Directional usage before the meter exists."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "cyber",
+    "owner": "Sam",
+    "id": "cyber.wa_known_users",
+    "caveat": "Approximate: one session document per phone.",
+    "name": "WhatsApp users known (approx.)",
+    "description": "Distinct phones with a session document at snapshot time.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Count of whatsapp_sessions documents at 23:55 Nairobi. Documents are overwritten per phone, so this approximates distinct recent users.",
+    "decision": "Rough size of the WhatsApp audience."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "planned",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "cyber",
+    "owner": "Sam",
+    "id": "cyber.shops_total",
+    "name": "Shops registered",
+    "description": "Shops set up through the bot.",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Count of shops. Not collected yet.",
+    "decision": "Size of the Cyber customer base."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "planned",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "cyber",
+    "owner": "Sam",
+    "id": "cyber.shops_new",
+    "name": "New shops",
+    "description": "Shops created on the day.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of shops created on the day. Not collected yet.",
+    "decision": "Acquisition pace."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "planned",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "cyber",
+    "owner": "Sam",
+    "id": "cyber.sales_recorded",
+    "name": "Sales recorded",
+    "description": "Sales logged through the bot.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of shop sales. Not collected yet.",
+    "decision": "Core product usage."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "planned",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "cyber",
+    "owner": "Sam",
+    "id": "cyber.sales_value",
+    "name": "Sales value recorded",
+    "description": "Value of sales logged through the bot.",
+    "type": "flow",
+    "unit": "KES_CENTS",
+    "formula": "Sum of sale amounts. Not collected yet.",
+    "decision": "Money passing through shops."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "planned",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "cyber",
+    "owner": "Sam",
+    "id": "cyber.expenses_recorded",
+    "name": "Expenses recorded",
+    "description": "Expenses logged through the bot.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of shop expenses. Not collected yet.",
+    "decision": "Depth of usage."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "planned",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "cyber",
+    "owner": "Sam",
+    "id": "cyber.reports_generated",
+    "name": "Reports generated",
+    "description": "Business reports produced.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of completed report jobs. Not collected yet (report charges are already in the PAY KPIs).",
+    "decision": "Feature demand."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "planned",
+    "dimensions": [],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "platform",
+    "platform": "cyber",
+    "owner": "Sam",
+    "id": "cyber.report_jobs_failed",
+    "name": "Report jobs failed",
+    "description": "Report requests that failed.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Count of failed report jobs. Not collected yet.",
+    "decision": "Reliability of a paid feature."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "stream"
+    ],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "company",
+    "platform": "all",
+    "owner": "Sam",
+    "id": "company.attempts",
+    "name": "Payment attempts (company)",
+    "description": "Payments initiated across all platforms.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Sum of pay.attempts across platforms.",
+    "decision": "Overall demand."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "stream"
+    ],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "company",
+    "platform": "all",
+    "owner": "Sam",
+    "id": "company.success",
+    "name": "Successful payments (company)",
+    "description": "Successful payments across all platforms.",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Sum of pay.success across platforms.",
+    "decision": "Overall volume."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "stream"
+    ],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "company",
+    "platform": "all",
+    "owner": "Sam",
+    "id": "company.success_rate",
+    "name": "Payment success rate (company)",
+    "description": "Company-wide checkout conversion.",
+    "type": "ratio",
+    "unit": "percent",
+    "formula": "Sum of successes / sum of attempts x 100.",
+    "numeratorDesc": "Successful payments, all platforms",
+    "denominatorDesc": "Payment attempts, all platforms",
+    "decision": "Fix payments before marketing."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "stream"
+    ],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "company",
+    "platform": "all",
+    "owner": "Sam",
+    "id": "company.gmv",
+    "name": "GMV (company)",
+    "description": "Money charged across all platforms. Not revenue.",
+    "type": "flow",
+    "unit": "KES_CENTS",
+    "formula": "Sum of pay.gmv across platforms.",
+    "decision": "Scale of money moving."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "stream"
+    ],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "company",
+    "platform": "all",
+    "owner": "Sam",
+    "id": "company.gateway_fees",
+    "name": "Gateway fees (company)",
+    "description": "Recorded Paystack fees across platforms.",
+    "type": "flow",
+    "unit": "KES_CENTS",
+    "formula": "Sum of pay.gateway_fees across platforms.",
+    "decision": "Cost of collecting."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "stream"
+    ],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "company",
+    "platform": "all",
+    "owner": "Sam",
+    "id": "company.platform_revenue",
+    "name": "Platform revenue (company)",
+    "description": "What the company earns across all streams (commission, SMS, subscriptions, reports, markup).",
+    "type": "flow",
+    "unit": "KES_CENTS",
+    "formula": "Sum of pay.platform_revenue across platforms. Dimension `stream` splits it by revenue stream.",
+    "decision": "Real size of the business."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "stream"
+    ],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "company",
+    "platform": "all",
+    "owner": "Sam",
+    "id": "company.pass_through",
+    "name": "Pass-through (company)",
+    "description": "Revenue owed onward (agent share).",
+    "type": "flow",
+    "unit": "KES_CENTS",
+    "formula": "Sum of pay.pass_through across platforms.",
+    "decision": "Cost of the agent channel."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "stream"
+    ],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "company",
+    "platform": "all",
+    "owner": "Sam",
+    "id": "company.net_revenue",
+    "caveat": "Part of this rests on estimates; see \"Net revenue not fully verified\".",
+    "name": "Net revenue (company)",
+    "description": "Revenue after gateway costs and pass-throughs.",
+    "type": "flow",
+    "unit": "KES_CENTS",
+    "formula": "Sum of pay.net_revenue across platforms.",
+    "decision": "Whether growth is profitable."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "stream"
+    ],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "scope": "company",
+    "platform": "all",
+    "owner": "Sam",
+    "id": "company.net_revenue_unverified",
+    "name": "Net revenue not fully verified (company)",
+    "description": "Portion of net revenue that rests on an estimate.",
+    "type": "flow",
+    "unit": "KES_CENTS",
+    "formula": "Sum of pay.net_revenue_unverified across platforms.",
+    "decision": "How far to trust the net revenue figure."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "collector"
+    ],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "id": "company.data_freshness_hours",
+    "name": "Data freshness",
+    "description": "Hours since each collector last succeeded. The number that tells you whether to trust every other number.",
+    "scope": "company",
+    "platform": "all",
+    "type": "stock",
+    "unit": "hours",
+    "formula": "Hours between now and the start of the collector's last successful run. Dimension: collector.",
+    "decision": "If above 26 hours, a collector is failing: fix before reading any other KPI.",
+    "owner": "Sam"
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "platform"
+    ],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily",
+      "weekly",
+      "monthly"
+    ],
+    "id": "company.active_accounts",
+    "name": "Active accounts",
+    "description": "Active accounts",
+    "scope": "company",
+    "platform": "all",
+    "type": "flow",
+    "unit": "count",
+    "formula": "Sum of the platform active-entity KPIs at the SAME grain: register.schools_marking + chama.chamas_active + pms.managers_active + cyber.wa_users_active (include a component only when a value exists for that period). One value per component with dimension platform in {register,chama,pms,cyber}, plus the total with no dimensions. Not de-duplicated across platforms (identifiers differ).",
+    "owner": "Sam",
+    "decision": "Is the customer base across all products growing or shrinking, and which product drives it?",
+    "caveat": "Entities differ by platform (schools, chamas, managers, WhatsApp users)."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "platform"
+    ],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily",
+      "weekly",
+      "monthly"
+    ],
+    "id": "company.new_accounts",
+    "name": "New accounts",
+    "description": "New accounts",
+    "scope": "company",
+    "platform": "all",
+    "type": "flow",
+    "unit": "count",
+    "formula": "register.schools_new + chama.chamas_new + pms.users_new, at the same grain; dimension platform in {register,chama,pms} plus total.",
+    "owner": "Sam",
+    "decision": "Is acquisition healthy overall, and which product needs more sales or marketing effort?"
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "weekly",
+    "grains": [
+      "weekly",
+      "monthly"
+    ],
+    "id": "company.net_revenue_per_active_account",
+    "name": "Net revenue per active account",
+    "description": "Net revenue per active account",
+    "scope": "company",
+    "platform": "all",
+    "type": "ratio",
+    "unit": "KES_CENTS",
+    "formula": "company.net_revenue (no dimensions) / company.active_accounts (no dimensions), at weekly and monthly grain only. value = round(numerator/denominator) in cents; numerator = net revenue cents; denominator = active accounts. Emit only when the denominator > 0.",
+    "numeratorDesc": "Company net revenue (KES cents)",
+    "denominatorDesc": "Active accounts",
+    "owner": "Sam",
+    "decision": "Are we earning more from each active customer, or growing usage without monetising it?"
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily",
+      "weekly",
+      "monthly"
+    ],
+    "id": "company.unverified_revenue_share",
+    "name": "Unverified revenue share",
+    "description": "Unverified revenue share",
+    "scope": "company",
+    "platform": "all",
+    "type": "ratio",
+    "unit": "percent",
+    "formula": "company.net_revenue_unverified / company.net_revenue x 100, numerator and denominator stored; 0 when the denominator is 0.",
+    "numeratorDesc": "Net revenue not fully verified (KES cents)",
+    "denominatorDesc": "Company net revenue (KES cents)",
+    "owner": "Sam",
+    "decision": "How much reported revenue still rests on estimates, and which source should record real fees or splits?"
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "platform"
+    ],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily",
+      "weekly",
+      "monthly"
+    ],
+    "id": "cross.revenue_share",
+    "name": "Revenue share by platform",
+    "description": "Revenue share by platform",
+    "scope": "cross",
+    "platform": "all",
+    "type": "ratio",
+    "unit": "percent",
+    "formula": "For platform P in {pms,register,chama,cyber}: pay.net_revenue (platform=P, no dimensions) / company.net_revenue (no dimensions) x 100. Dimension platform=P.",
+    "numeratorDesc": "Platform net revenue (KES cents)",
+    "denominatorDesc": "Company net revenue (KES cents)",
+    "owner": "Sam",
+    "decision": "Is revenue too concentrated in one product, and where should the next investment go?"
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "stream"
+    ],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily",
+      "weekly",
+      "monthly"
+    ],
+    "id": "cross.stream_share",
+    "name": "Revenue share by stream",
+    "description": "Revenue share by stream",
+    "scope": "cross",
+    "platform": "all",
+    "type": "ratio",
+    "unit": "percent",
+    "formula": "For stream S in {commission,sms,subscription,reports,markup}: company.net_revenue{stream=S} / company.net_revenue (no dimensions) x 100. Dimension stream=S.",
+    "numeratorDesc": "Company net revenue of the stream (KES cents)",
+    "denominatorDesc": "Company net revenue (KES cents)",
+    "owner": "Sam",
+    "decision": "Is the revenue mix shifting toward recurring streams or staying dependent on transaction fees?"
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily",
+      "weekly",
+      "monthly"
+    ],
+    "id": "cross.subscription_revenue",
+    "name": "Subscription revenue (recurring)",
+    "description": "Subscription revenue (recurring)",
+    "scope": "cross",
+    "platform": "all",
+    "type": "flow",
+    "unit": "KES_CENTS",
+    "formula": "company.net_revenue{stream=subscription}: Plot Yangu subscriptions plus MyChama plans.",
+    "owner": "Sam",
+    "decision": "Is predictable recurring income growing fast enough to cover fixed costs?"
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "platform"
+    ],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily",
+      "weekly",
+      "monthly"
+    ],
+    "id": "cross.sms_units_used",
+    "name": "SMS units used",
+    "description": "SMS units used",
+    "scope": "cross",
+    "platform": "all",
+    "type": "flow",
+    "unit": "count",
+    "formula": "register.sms_tokens_used (platform=register) + chama.sms_credits_used (platform=chama) at the same grain, plus a no-dimension total. Plot Yangu is excluded: its SMS consumption is not synced.",
+    "owner": "Sam",
+    "decision": "How much SMS capacity are customers consuming, and does the provider bill need renegotiating?",
+    "caveat": "Register tokens used is an estimate (deducted in the browser)."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [
+      "platform"
+    ],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily",
+      "weekly",
+      "monthly"
+    ],
+    "id": "cross.sms_prepaid_outstanding",
+    "name": "Prepaid SMS units outstanding",
+    "description": "Prepaid SMS units outstanding",
+    "scope": "cross",
+    "platform": "all",
+    "type": "stock",
+    "unit": "count",
+    "formula": "register.tokens_outstanding + chama.sms_credits_outstanding + pms.tokens_outstanding (platform=register|chama|pms) plus a no-dimension total. Stock: weekly/monthly take the last daily snapshot.",
+    "owner": "Sam",
+    "decision": "How large is the prepaid SMS liability we owe customers in future sends?"
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "neutral",
+    "grain": "daily",
+    "grains": [
+      "daily",
+      "weekly",
+      "monthly"
+    ],
+    "id": "cross.sms_cost_estimate",
+    "name": "SMS provider cost (estimate)",
+    "description": "SMS provider cost (estimate)",
+    "scope": "cross",
+    "platform": "all",
+    "type": "flow",
+    "unit": "KES_CENTS",
+    "formula": "cross.sms_units_used (no dimensions) x SMS_PROVIDER_COST_CENTS_PER_UNIT. Emit ONLY when that configured cost is > 0 (read from env KPI_SMS_COST_CENTS, default 0).",
+    "owner": "Sam",
+    "decision": "What are we paying the SMS provider for the traffic our customers generate?"
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily",
+      "weekly",
+      "monthly"
+    ],
+    "id": "cross.sms_margin",
+    "name": "SMS margin (estimate)",
+    "description": "SMS margin (estimate)",
+    "scope": "cross",
+    "platform": "all",
+    "type": "flow",
+    "unit": "KES_CENTS",
+    "formula": "(pay.net_revenue{stream=sms} for platform=register + same for platform=chama) - cross.sms_cost_estimate. Emit only when cross.sms_cost_estimate exists. Plot Yangu SMS revenue is excluded because its usage is unknown.",
+    "owner": "Sam",
+    "decision": "Is selling SMS credits profitable, or should SMS prices change?",
+    "caveat": "Needs the SMS provider cost per unit to be configured."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "higher_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily",
+      "weekly",
+      "monthly"
+    ],
+    "id": "cross.digital_rent_share",
+    "name": "Digital rent share",
+    "description": "Digital rent share",
+    "scope": "cross",
+    "platform": "all",
+    "type": "ratio",
+    "unit": "percent",
+    "formula": "pay.gmv (platform=pms, dimensions {chargeType: pms_rent}) / pms.rent_collected x 100. numerator, denominator stored. Share of recorded rent that was paid through Paystack. Emit only when pms.rent_collected > 0.",
+    "numeratorDesc": "Rent paid through Paystack (GMV, KES cents)",
+    "denominatorDesc": "Rent collected as recorded in Plot Yangu (KES cents)",
+    "owner": "Sam",
+    "decision": "How much rent still bypasses our payment rail, and where is the commission opportunity?",
+    "caveat": "PMS data is as of last sync."
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "id": "company.data_freshness_max_hours",
+    "name": "Oldest data (hours)",
+    "description": "Oldest data (hours)",
+    "scope": "company",
+    "platform": "all",
+    "type": "stock",
+    "unit": "hours",
+    "formula": "Maximum of company.data_freshness_hours (dimension collector) for the day. Day 'today' only matters.",
+    "owner": "Sam",
+    "decision": "Is any dashboard number built on data too old to trust?"
+  },
+  {
+    "thresholds": {},
+    "version": 1,
+    "status": "active",
+    "dimensions": [],
+    "direction": "lower_is_better",
+    "grain": "daily",
+    "grains": [
+      "daily"
+    ],
+    "id": "company.collectors_stale",
+    "name": "Collectors stale",
+    "description": "Collectors stale",
+    "scope": "company",
+    "platform": "all",
+    "type": "stock",
+    "unit": "count",
+    "formula": "Count of company.data_freshness_hours values > 26 for the day.",
+    "owner": "Sam",
+    "decision": "Which data collectors have stopped running and need fixing today?"
+  }
+]

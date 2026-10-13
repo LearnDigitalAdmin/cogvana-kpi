@@ -1,0 +1,24 @@
+rules_version = '2';
+
+// KPI project. Values are written ONLY by Cloud Functions (Admin SDK bypasses rules),
+// so every client write is denied. Reads need an explicit role claim.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function hasRole() {
+      return request.auth != null
+        && request.auth.token.role in ['admin', 'analyst', 'finance'];
+    }
+
+    match /kpi_definitions/{id} { allow read: if hasRole(); allow write: if false; }
+    match /kpi_values/{id}      { allow read: if hasRole(); allow write: if false; }
+    match /kpi_runs/{id}        { allow read: if hasRole(); allow write: if false; }
+
+    // Reserved for the Operations Control Plane: closed until those modules define access.
+    match /customer_metrics/{id} { allow read, write: if false; }
+    match /events/{id}           { allow read, write: if false; }
+    match /audit_log/{id}        { allow read, write: if false; }
+
+    match /{document=**} { allow read, write: if false; }
+  }
+}
