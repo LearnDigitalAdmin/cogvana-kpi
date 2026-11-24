@@ -16,6 +16,7 @@ import { snapshotChama } from "./collectors/chama/snapshot";
 import { createPmsCollector } from "./collectors/pms";
 import { snapshotPms } from "./collectors/pms/snapshot";
 import { createCyberCollector, snapshotCyber } from "./collectors/cyber";
+import { createDeskCollector, snapshotDesk } from "./collectors/desk";
 import { runDays, runSnapshot, writeFreshness } from "./jobs/run";
 import { runRollups } from "./jobs/rollups";
 import { assertDay, assertRole } from "./http/auth";
@@ -37,8 +38,9 @@ const registerCollector = () => createRegisterCollector(reader);
 const chamaCollector = () => createChamaCollector(reader);
 const pmsCollector = () => createPmsCollector(reader);
 const cyberCollector = () => createCyberCollector(reader);
-const collectors = () => [payCollector(), registerCollector(), chamaCollector(), pmsCollector(), cyberCollector()];
-const COLLECTOR_IDS = ["pay", "pay_stats", "register", "register_stats", "chama", "chama_stats", "pms", "pms_stats", "cyber", "cyber_stats", "rollups"];
+const deskCollector = () => createDeskCollector(reader);
+const collectors = () => [payCollector(), registerCollector(), chamaCollector(), pmsCollector(), cyberCollector(), deskCollector()];
+const COLLECTOR_IDS = ["pay", "pay_stats", "register", "register_stats", "chama", "chama_stats", "pms", "pms_stats", "cyber", "cyber_stats", "desk", "desk_stats", "rollups"];
 
 /** Days recomputed each night so payments that settle late correct earlier figures. */
 const LOOKBACK_DAYS = 3;
@@ -82,7 +84,7 @@ export const kpiRollups = onSchedule(
   }
 );
 
-/** 23:55 Nairobi: snapshot PAY's running counters plus Register, Chama, Plot Yangu and Cyber stock counts (none keeps history). */
+/** 23:55 Nairobi: snapshot PAY's running counters plus Register, Chama, Plot Yangu, Cyber and Samuhia Desk stock counts (none keeps history). */
 export const kpiStatsSnapshot = onSchedule(
   { schedule: "55 23 * * *", timeZone: "Africa/Nairobi", timeoutSeconds: 120 },
   async () => {
@@ -93,6 +95,7 @@ export const kpiStatsSnapshot = onSchedule(
       await runSnapshot(s, "chama_stats", (now, runId) => snapshotChama(reader, now, runId), Date.now),
       await runSnapshot(s, "pms_stats", (now, runId) => snapshotPms(reader, now, runId), Date.now),
       await runSnapshot(s, "cyber_stats", (now, runId) => snapshotCyber(reader, now, runId), Date.now),
+      await runSnapshot(s, "desk_stats", (now, runId) => snapshotDesk(reader, now, runId), Date.now),
     ];
     await writeFreshness(s, COLLECTOR_IDS, Date.now());
     const errors = results.flatMap((r) => r.errors);

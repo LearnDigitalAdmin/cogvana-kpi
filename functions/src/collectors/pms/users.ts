@@ -13,7 +13,7 @@ const SRC = "default" as const;
  * (the cloud user document contains a password hash; it is not touched).
  */
 export const USER_SELECT = [
-  "localId", "tier", "storage", "isTrial", "trialStartedAt", "subscriptionExpiry", "lastPaymentDate", "lastSyncTime", "messageTokens",
+  "localId", "tier", "storage", "isTrial", "trialStartedAt", "subscriptionExpiry", "lastPaymentDate", "lastSyncTime", "tokens", "messageTokens",
 ];
 
 export const KNOWN_TIERS = ["free", "low", "business", "enterprise"] as const;
@@ -41,7 +41,8 @@ export function toPmsUser(rec: DocRecord): PmsUser {
     expiry: toMillis(d.subscriptionExpiry),
     lastPayment: toMillis(d.lastPaymentDate),
     lastSync: toMillis(d.lastSyncTime),
-    tokens: num(d.messageTokens) ?? 0,
+    // Plot Yangu keeps its SMS balance in `tokens` (credited by PAY, spent by the whatsapp functions); messageTokens is Register's name.
+    tokens: num(d.tokens) ?? num(d.messageTokens) ?? 0,
   };
 }
 

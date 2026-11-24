@@ -14,6 +14,7 @@ import { createRegisterCollector } from "../collectors/register";
 import { createChamaCollector } from "../collectors/chama";
 import { createPmsCollector } from "../collectors/pms";
 import { createCyberCollector } from "../collectors/cyber";
+import { createDeskCollector } from "../collectors/desk";
 import { FirestoreSourceReader } from "../core/firestoreReader";
 import { runDays, writeFreshness } from "../jobs/run";
 
@@ -35,11 +36,11 @@ async function main() {
   admin.initializeApp({ projectId });
   const store = new FirestoreKpiStore(admin.firestore());
   const reader = new FirestoreSourceReader();
-  const collectors = [createPayCollector(reader), createRegisterCollector(reader), createChamaCollector(reader), createPmsCollector(reader), createCyberCollector(reader)];
+  const collectors = [createPayCollector(reader), createRegisterCollector(reader), createChamaCollector(reader), createPmsCollector(reader), createCyberCollector(reader), createDeskCollector(reader)];
 
   console.log(`Backfilling ${days.length} day(s) ${from} -> ${to} into project ${projectId} ...`);
   const result = await runDays({ store, collectors, now: Date.now }, days);
-  await writeFreshness(store, ["pay", "register", "chama", "pms", "cyber"], Date.now());
+  await writeFreshness(store, ["pay", "register", "chama", "pms", "cyber", "desk"], Date.now());
 
   console.log(`Wrote ${result.rowsWritten} values. ok=${result.ok}`);
   if (!result.ok) {

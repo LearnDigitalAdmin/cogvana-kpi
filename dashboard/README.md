@@ -1,4 +1,4 @@
-# Cogvana KPI dashboard
+# Samuhia KPI dashboard
 
 Read-only React + Firebase dashboard for the KPI project. It calls `kpiGetValues` and reads `kpi_definitions` / `kpi_runs`.
 

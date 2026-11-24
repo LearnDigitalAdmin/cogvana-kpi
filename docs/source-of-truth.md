@@ -100,7 +100,7 @@ Database: the default database (`plot-9fd6e`), shared with PAY and Cyber. PMS is
 
 | KPI group | Path | Fields used | Stored as | Notes |
 |-----------|------|-------------|-----------|-------|
-| Accounts, plans, trials, sync health, tokens | `users/{userId}` (top-level, shared with Cyber) | `localId` (number, marks a PMS user), `tier`, `storage`, `isTrial`, `trialStartedAt`, `subscriptionExpiry`, `lastPaymentDate`, `lastSyncTime`, `messageTokens`, `createdAt` | Timestamps for the five time fields; `createdAt` is an ISO string | **Never selected: `passwordHash`, `email`, `phone`, `name`.** The cloud user document does contain the password hash, which is a security issue to fix at source |
+| Accounts, plans, trials, sync health, tokens | `users/{userId}` (top-level, shared with Cyber) | `localId` (number, marks a PMS user), `tier`, `storage`, `isTrial`, `trialStartedAt`, `subscriptionExpiry`, `lastPaymentDate`, `lastSyncTime`, `tokens` (Plot Yangu's balance; `messageTokens` is Register's name and is only a fallback), `createdAt` | Timestamps for the five time fields; `createdAt` is an ISO string | **Never selected: `passwordHash`, `email`, `phone`, `name`.** The cloud user document does contain the password hash, which is a security issue to fix at source |
 | Properties | `users/{u}/properties/{id}` | `createdAt` | ISO string | Group `properties`; fallback parent `users` |
 | Units, occupancy | `users/{u}/properties/{p}/units/{id}` | `isOccupied` | boolean | Group `units` (nested two levels): needs the group index, no fallback |
 | Tenants | `users/{u}/tenants/{id}` | `createdAt`, `isActive`, `userId` | ISO string, boolean | Group `tenants`. A top-level `tenants` collection also exists (Cyber); rows outside `users/{u}/tenants` are ignored |
@@ -119,13 +119,34 @@ PMS commission, subscriptions and SMS sales are PAY KPIs (`pay.*` with platform 
 
 ---
 
-# Cyber (WhatsApp usage only for now)
+# Samuhia Desk, WhatsApp bot (formerly Samuhia Cyber)
 
 Database: the default database. Cyber keeps **no WhatsApp message log**. `whatsapp_sessions/{phone}` holds one short-lived document per phone (30-minute timeout, overwritten on the next conversation; `createdAt` and `lastActive` are epoch seconds). The document id is a phone number, so it is never selected.
 
 | KPI family | Path | Fields | Notes |
 |------------|------|--------|-------|
-| **Exact** (usage meter) | `whatsapp_usage/{YYYY-MM-DD}` | `inbound`, `outbound`, `outboundFailed`, `sessionsStarted` (counters), `users` (map of salted-hash keys to true) | Written by `cyber-whatsapp-meter/` (3 files to copy into the CYBER repo). Days before deployment have no document, so no values (absent, not zero) |
+| **Exact** (usage meter) | `whatsapp_usage/{YYYY-MM-DD}` | `inbound`, `outbound`, `outboundFailed`, `sessionsStarted` (counters), `users` (map of salted-hash keys to true) | Written by the meter in the CYBER repo (`functions/src/utils/whatsapp.usage.ts`). Days before it went live have no document, so no values (absent, not zero) |
 | **Approximate** (works today) | `whatsapp_sessions` | `lastActive` (epoch seconds) | Count only; one document per phone at its latest activity |
 
 Flagged, not collected (status `planned` in the registry): shops, sales, expenses, reports generated and failed, new shops.
+
+## Plot Yangu SMS usage (added)
+
+`users/{u}/sms-sent-log/{id}` (default database, group `sms-sent-log`): `sentAt` (Timestamp), `recipientCount`, `tokensCharged`, `successCount`, `failCount`. Written by the server when a message is sent, so unlike the rest of PMS it is exact, not "as of last sync". Needs the `sms-sent-log.sentAt` collection-group index in `source-indexes/plot-9fd6e.indexes-to-add.json`. Plot Yangu now feeds `cross.sms_units_used` and the SMS margin.
+
+# Samuhia Desk, agent network (added)
+
+Database: the default database (`plot-9fd6e`). Times are epoch ms; money is integer minor units (KES x 100). Never selected: names, phones, emails, ID numbers, request or support text, documents.
+
+| Figure | Collection | Fields read | Notes |
+|---|---|---|---|
+| Agents, applications | `desk_agents` | `status`, `createdAt` | Statuses: applied, training, certified, active, suspended, closed |
+| Owned customers | `desk_customers` | `product`, `firstPurchaseUsed` | Product is chama, school or pms |
+| Work sessions, agents working, customers served | `desk_sessions` | `agentId`, `entityKey`, `otpVerifiedAt`, `createdAt` | `entityKey` is `product:id`; only the product prefix is used |
+| Paid services | `desk_tickets` | `status`, `serviceType`, `amountMinor`, `grossMinor`, `platformMinor`, `createdAt` | Paid or committed counts as sold. The same money is in the PAY Cyber stream |
+| Desk-attributed sales, agent share | `desk_events` (written by PAY) | `type`, `product`, `grossMinor`, `feeMinor`, `agentSharePct`, `credits`, `paidAt` | Agent share = floor((gross − fee) × share), as PAY's split computes it. `pay.net_revenue` does not subtract it |
+| Agent earnings, payouts waiting | `desk_ledger` | `kind`, `status`, `amountMinor`, `createdAt` | Void entries and reversals are excluded from earnings; payable and processing are stock counts |
+| Support | `desk_support`, `desk_requests` | `category`, `customerConfirmedAt`, `source`, `status`, `createdAt` | Message and reply text is never selected |
+| Rent batches | `desk_rent_batches` | `results[].status`, `createdAt` | Counts sent and failed STK prompts |
+
+Service charges (`CYBER_DSK_`) go through `cyber-transactions`, which stores `commissionRate`; the PAY cyber adapter uses it when present.

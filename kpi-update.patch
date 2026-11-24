@@ -1,0 +1,3046 @@
+From d31def59b02903a62f7a03bcc35490800bca32d3 Mon Sep 17 00:00:00 2001
+From: KPI update <kpi@example.com>
+Date: Tue, 24 Nov 2026 12:24:38 +0000
+Subject: [PATCH] Update KPIs to match PAY, PMS and DESK as of Nov 2026
+
+- PAY: rent convenience-fee books, Lipa Mos Mos / Mdogo Mdogo, Landlord Watch, compliance reports; revenue-only lines
+- PMS: SMS credits live in users.tokens (was reading messageTokens), six tiers, SMS audit-log KPIs
+- DESK: House to Rent, desk agent network and commissions
+- Rollups: new streams, Plot Yangu SMS in cross-project SMS KPIs
+- Dashboard: layouts for new KPIs; commit dashboard/src/lib (was ignored by .gitignore)
+- Docs and catalogue regenerated (166 KPIs)
+---
+ .gitignore                                    |   2 +-
+ cyber-whatsapp-meter/README.md                |   2 +
+ dashboard/src/components/Layout.tsx           |   2 +-
+ dashboard/src/lib/aggregate.test.ts           | 163 +++++++
+ dashboard/src/lib/aggregate.ts                | 203 ++++++++
+ dashboard/src/lib/batch.test.ts               |  18 +
+ dashboard/src/lib/batch.ts                    |  12 +
+ dashboard/src/lib/csv.ts                      |  35 ++
+ dashboard/src/lib/firebase.ts                 |  21 +
+ dashboard/src/lib/format.test.ts              |  37 ++
+ dashboard/src/lib/format.ts                   |  59 +++
+ dashboard/src/lib/freshness.ts                |  40 ++
+ dashboard/src/lib/layouts.ts                  | 139 ++++++
+ dashboard/src/lib/nairobi.test.ts             |  52 ++
+ dashboard/src/lib/nairobi.ts                  | 128 +++++
+ dashboard/src/lib/types.ts                    |  33 ++
+ docs/glossary.md                              |  16 +
+ docs/kpi-catalogue.json                       | 448 +++++++++++++++++-
+ docs/kpi-catalogue.md                         |  24 +-
+ docs/source-of-truth.md                       |  52 +-
+ functions/src/collectors/cyber/desk.ts        | 104 ++++
+ functions/src/collectors/cyber/index.ts       |  36 +-
+ .../src/collectors/pay/adapters/index.ts      |  12 +-
+ .../collectors/pay/adapters/instalments.ts    | 155 ++++++
+ functions/src/collectors/pay/adapters/rent.ts |  28 +-
+ .../collectors/pay/adapters/revenueRows.ts    |  42 ++
+ functions/src/collectors/pay/aggregate.ts     |  10 +-
+ functions/src/collectors/pay/facts.ts         |  43 +-
+ functions/src/collectors/pms/index.ts         |   5 +-
+ functions/src/collectors/pms/smsLog.ts        |  36 ++
+ functions/src/collectors/pms/users.ts         |   7 +-
+ functions/src/registry/cross.ts               |   6 +-
+ functions/src/registry/cyber.ts               |  19 +-
+ functions/src/registry/pms.ts                 |  10 +-
+ functions/src/rollups/config.ts               |   7 +-
+ functions/test/cyber.test.ts                  |   4 +-
+ functions/test/pms.test.ts                    |   4 +-
+ functions/test/update.test.ts                 | 223 +++++++++
+ source-indexes/plot-9fd6e.indexes-to-add.json | 150 +++++-
+ 39 files changed, 2319 insertions(+), 68 deletions(-)
+ create mode 100644 dashboard/src/lib/aggregate.test.ts
+ create mode 100644 dashboard/src/lib/aggregate.ts
+ create mode 100644 dashboard/src/lib/batch.test.ts
+ create mode 100644 dashboard/src/lib/batch.ts
+ create mode 100644 dashboard/src/lib/csv.ts
+ create mode 100644 dashboard/src/lib/firebase.ts
+ create mode 100644 dashboard/src/lib/format.test.ts
+ create mode 100644 dashboard/src/lib/format.ts
+ create mode 100644 dashboard/src/lib/freshness.ts
+ create mode 100644 dashboard/src/lib/layouts.ts
+ create mode 100644 dashboard/src/lib/nairobi.test.ts
+ create mode 100644 dashboard/src/lib/nairobi.ts
+ create mode 100644 dashboard/src/lib/types.ts
+ create mode 100644 functions/src/collectors/cyber/desk.ts
+ create mode 100644 functions/src/collectors/pay/adapters/instalments.ts
+ create mode 100644 functions/src/collectors/pay/adapters/revenueRows.ts
+ create mode 100644 functions/src/collectors/pms/smsLog.ts
+ create mode 100644 functions/test/update.test.ts
+
+diff --git a/.gitignore b/.gitignore
+index 28f4938..3ea88ed 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1,5 +1,5 @@
+ node_modules/
+-lib/
++/functions/lib/
+ .env
+ .env.*
+ !.env.example
+diff --git a/cyber-whatsapp-meter/README.md b/cyber-whatsapp-meter/README.md
+index b30892f..95b4719 100644
+--- a/cyber-whatsapp-meter/README.md
++++ b/cyber-whatsapp-meter/README.md
+@@ -1,3 +1,5 @@
++> Status: the meter is already deployed in DESK (the former CYBER repo). This folder is kept as the reference copy.
++
+ # Cyber WhatsApp usage meter (drop into the CYBER repo)
+ 
+ Cyber keeps no WhatsApp message log (sessions are short-lived and keyed by phone number), so exact usage cannot
+diff --git a/dashboard/src/components/Layout.tsx b/dashboard/src/components/Layout.tsx
+index f44cd3b..a50ae1f 100644
+--- a/dashboard/src/components/Layout.tsx
++++ b/dashboard/src/components/Layout.tsx
+@@ -7,7 +7,7 @@ import { FreshnessBanner } from "./FreshnessBanner";
+ 
+ const NAV: [string, string][] = [
+   ["/", "Overview"], ["/money", "Money"], ["/register", "Register"], ["/chama", "Chama"], ["/pms", "Plot Yangu"],
+-  ["/cyber", "Cyber"], ["/cross", "Cross-project"], ["/health", "Data health"], ["/catalogue", "Catalogue"],
++  ["/cyber", "DESK (Cyber)"], ["/cross", "Cross-project"], ["/health", "Data health"], ["/catalogue", "Catalogue"],
+ ];
+ 
+ export function Layout() {
+diff --git a/dashboard/src/lib/aggregate.test.ts b/dashboard/src/lib/aggregate.test.ts
+new file mode 100644
+index 0000000..f44a58a
+--- /dev/null
++++ b/dashboard/src/lib/aggregate.test.ts
+@@ -0,0 +1,163 @@
++import { describe, expect, it } from "vitest";
++import { breakdownRow, computeDelta, computeHeadline, dimensionOptions, groupByDim, latestPerDim, stackRows, summarise, toSeries, toneFor, totalSeries } from "./aggregate";
++import { fillPeriods } from "./aggregate";
++import { freshnessLevel, freshnessRows } from "./freshness";
++import type { KpiDefinition, KpiValue } from "./types";
++
++const def = (o: Partial<KpiDefinition>): KpiDefinition => ({
++  id: "x.y", name: "X", description: "", scope: "platform", platform: "all", type: "flow", unit: "count", grain: "daily", grains: ["daily"],
++  formula: "", direction: "higher_is_better", dimensions: [], thresholds: {}, owner: "", decision: "", version: 1, status: "active", ...o,
++});
++let n = 0;
++const val = (o: Partial<KpiValue>): KpiValue => ({
++  id: `v${n++}`, kpiId: "x.y", platform: "all", grain: "daily", periodStart: "2026-09-29", periodEnd: "2026-09-29", value: 1,
++  numerator: null, denominator: null, dimensions: {}, customerKey: null, definitionVersion: 1, complete: true, computedAt: 1, runId: "r", ...o,
++});
++
++describe("headline by type", () => {
++  it("flow with only daily grain: sum", () => {
++    const pts = toSeries([val({ periodStart: "2026-09-28", value: 10 }), val({ periodStart: "2026-09-29", value: 5 })]);
++    expect(computeHeadline(def({}), pts, "2026-09-28")).toMatchObject({ kind: "sum", value: 15, partial: false });
++  });
++  it("distinct-count flow: latest period, never summed", () => {
++    const d = def({ grains: ["daily", "weekly", "monthly"] });
++    const pts = toSeries([val({ periodStart: "2026-09-21", value: 38, grain: "weekly" }), val({ periodStart: "2026-09-28", value: 41, complete: false, grain: "weekly" })]);
++    expect(computeHeadline(d, pts, "2026-09-01")).toMatchObject({ kind: "latest", value: 41, period: "2026-09-28", partial: true });
++  });
++  it("stock: latest with as-of and history note", () => {
++    const d = def({ type: "stock" });
++    const pts = toSeries([val({ periodStart: "2026-09-30", periodEnd: "2026-09-30", value: 12 }), val({ periodStart: "2026-10-01", periodEnd: "2026-10-01", value: 14 })]);
++    expect(computeHeadline(d, pts, "2026-09-25")).toMatchObject({ kind: "stock", value: 14, asOf: "2026-10-01", historyStart: "2026-09-30" });
++    expect(computeHeadline(d, pts, "2026-09-30").historyStart).toBeUndefined();
++  });
++});
++
++describe("ratios", () => {
++  const d = def({ type: "ratio", unit: "percent", id: "pay.success_rate" });
++  it("recomputes from summed numerator/denominator, never averages", () => {
++    const pts = toSeries([
++      val({ periodStart: "2026-09-28", value: 100, numerator: 1, denominator: 1 }),
++      val({ periodStart: "2026-09-29", value: 50, numerator: 5, denominator: 10 }),
++    ]);
++    expect(computeHeadline(d, pts, "2026-09-28").value).toBe(54.5); // 6/11, not (100+50)/2
++  });
++  it("zero denominator sum is absent", () => {
++    const pts = toSeries([val({ value: 0, numerator: 0, denominator: 0 })]);
++    expect(computeHeadline(d, pts, "2026-09-29").value).toBeNull();
++  });
++  it("money ratio is rounded cents", () => {
++    const m = def({ type: "ratio", unit: "KES_CENTS" });
++    expect(computeHeadline(m, toSeries([val({ numerator: 10000, denominator: 3, value: 3333 })]), "2026-09-29").value).toBe(3333);
++  });
++  it("snapshot ratios use the latest value", () => {
++    const s = def({ type: "ratio", unit: "percent", id: "pms.occupancy_rate" });
++    const pts = toSeries([val({ periodStart: "2026-09-28", value: 80, numerator: 8, denominator: 10 }), val({ periodStart: "2026-09-29", value: 90, numerator: 9, denominator: 10 })]);
++    expect(computeHeadline(s, pts, "2026-09-28")).toMatchObject({ kind: "stock", value: 90 });
++  });
++});
++
++describe("absent is not zero", () => {
++  it("no values → null headline, no delta", () => {
++    const s = summarise(def({}), [], [], "2026-09-23", "2026-09-16");
++    expect(s.headline.value).toBeNull();
++    expect(s.delta).toBeNull();
++  });
++  it("a real zero stays zero", () => {
++    expect(computeHeadline(def({}), toSeries([val({ value: 0 })]), "2026-09-29").value).toBe(0);
++  });
++  it("gaps stay null in the period grid", () => {
++    const rows = fillPeriods("daily", "2026-09-28", "2026-09-30", toSeries([val({ periodStart: "2026-09-28", value: 3 }), val({ periodStart: "2026-09-30", value: 4 })]));
++    expect(rows.map((r) => r.point?.value ?? null)).toEqual([3, null, 4]);
++  });
++});
++
++describe("delta", () => {
++  const h = (value: number | null) => ({ kind: "sum" as const, value, partial: false });
++  it("colours by direction", () => {
++    expect(toneFor("up", "higher_is_better")).toBe("good");
++    expect(toneFor("down", "higher_is_better")).toBe("bad");
++    expect(toneFor("up", "lower_is_better")).toBe("bad");
++    expect(toneFor("down", "lower_is_better")).toBe("good");
++    expect(toneFor("up", "neutral")).toBe("neutral");
++    expect(toneFor("flat", "lower_is_better")).toBe("neutral");
++  });
++  it("percentage change; hidden for absent or zero previous", () => {
++    expect(computeDelta(h(110), h(100), "higher_is_better")).toMatchObject({ pct: 10, dir: "up", tone: "good" });
++    expect(computeDelta(h(90), h(100), "lower_is_better")).toMatchObject({ dir: "down", tone: "good" });
++    expect(computeDelta(h(5), h(0), "higher_is_better")).toBeNull();
++    expect(computeDelta(h(5), h(null), "higher_is_better")).toBeNull();
++    expect(computeDelta(h(null), h(5), "higher_is_better")).toBeNull();
++  });
++});
++
++describe("partial periods", () => {
++  it("flags partial on the current side and excludes incomplete periods from the previous side", () => {
++    const cur = [val({ periodStart: "2026-09-29", value: 10 }), val({ periodStart: "2026-09-30", value: 4, complete: false })];
++    const prev = [val({ periodStart: "2026-09-22", value: 10 }), val({ periodStart: "2026-09-23", value: 999, complete: false })];
++    const s = summarise(def({}), cur, prev, "2026-09-29", "2026-09-22");
++    expect(s.headline).toMatchObject({ value: 14, partial: true });
++    expect(s.prevHeadline.value).toBe(10);
++    expect(s.delta?.pct).toBe(40);
++  });
++});
++
++describe("dimensions", () => {
++  const vs = [
++    val({ value: 100 }),
++    val({ value: 60, dimensions: { stream: "sms" } }),
++    val({ value: 40, dimensions: { stream: "commission" } }),
++    val({ value: 7, dimensions: { stream: "sms", chargeType: "x" } }),
++  ];
++  it("total is the un-dimensioned value only", () => {
++    expect(totalSeries(vs, "x.y").map((p) => p.value)).toEqual([100]);
++  });
++  it("groups breakdowns by a single dimension key", () => {
++    const g = groupByDim(vs, "stream");
++    expect([...g.keys()].sort()).toEqual(["commission", "sms"]);
++    expect(g.get("sms")![0].value).toBe(60);
++  });
++  it("lists dimension options", () => {
++    expect(dimensionOptions(vs)).toEqual([{ key: "stream", value: "commission" }, { key: "stream", value: "sms" }]);
++  });
++  it("stack rows keep absent series as null and flag partial rows", () => {
++    const g = new Map([
++      ["sms", toSeries([val({ periodStart: "2026-09-29", value: 5 }), val({ periodStart: "2026-09-30", value: 6, complete: false })])],
++      ["markup", toSeries([val({ periodStart: "2026-09-29", value: 2 })])],
++    ]);
++    const rows = stackRows("daily", "2026-09-29", "2026-09-30", g);
++    expect(rows[1]).toMatchObject({ partial: true, values: { sms: 6, markup: null } });
++  });
++  it("latest per dimension merges unknown values via normaliser", () => {
++    const tiers = [val({ dimensions: { tier: "free" }, value: 5 }), val({ dimensions: { tier: "weird" }, value: 2 }), val({ dimensions: { tier: "odd" }, value: 1 })];
++    const out = latestPerDim(tiers, "tier", (t) => (["free", "low", "business", "enterprise"].includes(t) ? t : "other"));
++    expect(out.find((o) => o.dim === "other")?.point.value).toBe(3);
++  });
++  it("charge-type row recomputes the success rate from summed numerator/denominator", () => {
++    const d = { chargeType: "pms_rent" };
++    const rows = [
++      val({ kpiId: "pay.success_rate", platform: "pms", dimensions: d, periodStart: "2026-09-28", value: 100, numerator: 1, denominator: 1 }),
++      val({ kpiId: "pay.success_rate", platform: "pms", dimensions: d, periodStart: "2026-09-29", value: 50, numerator: 1, denominator: 2 }),
++      val({ kpiId: "pay.gmv", platform: "pms", dimensions: d, value: 5000 }),
++      val({ kpiId: "pay.gmv", platform: "register", dimensions: d, value: 9999 }),
++    ];
++    const r = breakdownRow(rows, "pms", "chargeType", "pms_rent");
++    expect(r.rate).toBe(66.7);
++    expect(r.gmv).toBe(5000);
++    expect(r.attempts).toBeNull();
++  });
++});
++
++describe("freshness", () => {
++  const f = (collector: string, value: number, periodStart = "2026-09-30") => val({ kpiId: "company.data_freshness_hours", dimensions: { collector }, value, periodStart });
++  const all = (v: number) => ["pay", "register", "chama", "pms", "cyber", "rollups"].map((c) => f(c, v));
++  it("ok when all fresh", () => expect(freshnessLevel(freshnessRows(all(3)))).toBe("ok"));
++  it("amber between 12 and 26", () => expect(freshnessLevel(freshnessRows([...all(3), f("pay", 14, "2026-10-01")]))).toBe("amber"));
++  it("red above 26 or when a required collector is missing", () => {
++    expect(freshnessLevel(freshnessRows([...all(3), f("pay", 30, "2026-10-01")]))).toBe("red");
++    expect(freshnessLevel(freshnessRows(all(3).slice(1)))).toBe("red");
++  });
++  it("uses the latest daily value per collector", () => {
++    const rows = freshnessRows([f("pay", 40, "2026-09-29"), f("pay", 2, "2026-09-30")]);
++    expect(rows.find((r) => r.collector === "pay")?.hours).toBe(2);
++  });
++});
+diff --git a/dashboard/src/lib/aggregate.ts b/dashboard/src/lib/aggregate.ts
+new file mode 100644
+index 0000000..12af967
+--- /dev/null
++++ b/dashboard/src/lib/aggregate.ts
+@@ -0,0 +1,203 @@
++import type { Grain, KpiDefinition, KpiValue } from "./types";
++import { expectedPeriods } from "./nairobi";
++
++export interface Point {
++  periodStart: string; periodEnd: string; value: number;
++  numerator: number | null; denominator: number | null; complete: boolean;
++}
++
++/** Ratio KPIs that are point-in-time snapshots (their numerator/denominator are stocks): never summed over days. */
++export const SNAPSHOT_RATIOS = new Set(["chama.portfolio_at_risk", "pms.occupancy_rate", "pms.trial_conversion_rate", "pms.collection_rate"]);
++
++export const isTotal = (v: KpiValue): boolean => Object.keys(v.dimensions ?? {}).length === 0;
++export const onlyDim = (v: KpiValue, key: string): boolean => {
++  const k = Object.keys(v.dimensions ?? {});
++  return k.length === 1 && k[0] === key;
++};
++
++export function toPoint(v: KpiValue): Point {
++  return {
++    periodStart: v.periodStart, periodEnd: v.periodEnd, value: v.value,
++    numerator: v.numerator ?? null, denominator: v.denominator ?? null, complete: v.complete !== false,
++  };
++}
++
++/** Sorted by period, one point per periodStart (latest computedAt wins). */
++export function toSeries(values: KpiValue[]): Point[] {
++  const m = new Map<string, KpiValue>();
++  for (const v of values) {
++    const cur = m.get(v.periodStart);
++    if (!cur || v.computedAt >= cur.computedAt) m.set(v.periodStart, v);
++  }
++  return [...m.values()].sort((a, b) => a.periodStart.localeCompare(b.periodStart)).map(toPoint);
++}
++
++export const forKpi = (values: KpiValue[], kpiId: string, platform?: string): KpiValue[] =>
++  values.filter((v) => v.kpiId === kpiId && (!platform || v.platform === platform));
++export const totalSeries = (values: KpiValue[], kpiId: string, platform?: string): Point[] =>
++  toSeries(forKpi(values, kpiId, platform).filter(isTotal));
++
++export function seriesForDimension(values: KpiValue[], key: string | null, dimValue: string | null): Point[] {
++  if (!key || dimValue === null) return toSeries(values.filter(isTotal));
++  return toSeries(values.filter((v) => onlyDim(v, key) && v.dimensions[key] === dimValue));
++}
++
++/** Distinct single-dimension (key, value) pairs present in the values. */
++export function dimensionOptions(values: KpiValue[]): { key: string; value: string }[] {
++  const seen = new Set<string>();
++  const out: { key: string; value: string }[] = [];
++  for (const v of values) {
++    const keys = Object.keys(v.dimensions ?? {});
++    if (keys.length !== 1) continue;
++    const id = `${keys[0]}=${v.dimensions[keys[0]]}`;
++    if (!seen.has(id)) { seen.add(id); out.push({ key: keys[0], value: v.dimensions[keys[0]] }); }
++  }
++  return out.sort((a, b) => (a.key + a.value).localeCompare(b.key + b.value));
++}
++
++/** Values carrying exactly the single dimension `key`, grouped by its value. */
++export function groupByDim(values: KpiValue[], key: string): Map<string, Point[]> {
++  const raw = new Map<string, KpiValue[]>();
++  for (const v of values) if (onlyDim(v, key)) (raw.get(v.dimensions[key]) ?? raw.set(v.dimensions[key], []).get(v.dimensions[key])!).push(v);
++  return new Map([...raw].map(([k, vs]) => [k, toSeries(vs)]));
++}
++
++/** Total (no-dimension) values grouped by their `platform` field. */
++export function groupByPlatform(values: KpiValue[], kpiId: string): Map<string, Point[]> {
++  const raw = new Map<string, KpiValue[]>();
++  for (const v of values) if (v.kpiId === kpiId && isTotal(v)) (raw.get(v.platform) ?? raw.set(v.platform, []).get(v.platform)!).push(v);
++  return new Map([...raw].map(([k, vs]) => [k, toSeries(vs)]));
++}
++
++export const latest = (points: Point[]): Point | null => (points.length ? points[points.length - 1] : null);
++
++/** Latest point per dimension value; `normalise` can merge raw values (e.g. unknown tier → "other", summed). */
++export function latestPerDim(values: KpiValue[], key: string, normalise: (v: string) => string = (x) => x): { dim: string; point: Point }[] {
++  const out = new Map<string, Point>();
++  for (const [raw, pts] of groupByDim(values, key)) {
++    const p = latest(pts);
++    if (!p) continue;
++    const dim = normalise(raw);
++    const prev = out.get(dim);
++    out.set(dim, prev ? { ...prev, value: prev.value + p.value, complete: prev.complete && p.complete, periodStart: p.periodStart > prev.periodStart ? p.periodStart : prev.periodStart } : p);
++  }
++  return [...out].map(([dim, point]) => ({ dim, point }));
++}
++
++export interface GridRow { periodStart: string; point: Point | null }
++/** One row per expected period; absent periods stay null (gaps, never zeros). */
++export function fillPeriods(grain: Grain, from: string, to: string, points: Point[]): GridRow[] {
++  const byStart = new Map(points.map((p) => [p.periodStart, p]));
++  return expectedPeriods(grain, from, to).map((periodStart) => ({ periodStart, point: byStart.get(periodStart) ?? null }));
++}
++
++export interface StackRow { periodStart: string; partial: boolean; values: Record<string, number | null> }
++export function stackRows(grain: Grain, from: string, to: string, groups: Map<string, Point[]>): StackRow[] {
++  const filled = [...groups].map(([k, pts]) => [k, new Map(pts.map((p) => [p.periodStart, p]))] as const);
++  const starts = new Set(expectedPeriods(grain, from, to));
++  for (const [, m] of filled) for (const s of m.keys()) if (s >= from && s <= to) starts.add(s);
++  return [...starts].sort().map((periodStart) => {
++    const values: Record<string, number | null> = {};
++    let partial = false;
++    for (const [k, m] of filled) {
++      const p = m.get(periodStart);
++      values[k] = p ? p.value : null;
++      if (p && !p.complete) partial = true;
++    }
++    return { periodStart, partial, values };
++  });
++}
++
++export const sumPoints = (points: Point[]): number | null => (points.length ? points.reduce((s, p) => s + p.value, 0) : null);
++
++/** Recomputed ratio: sum(numerator) / sum(denominator); null if inputs are missing or the denominator sums to 0. */
++export function ratioOfSums(points: Point[], scale = 1): number | null {
++  if (!points.length || points.some((p) => p.numerator === null || p.denominator === null)) return null;
++  const n = points.reduce((s, p) => s + (p.numerator as number), 0);
++  const d = points.reduce((s, p) => s + (p.denominator as number), 0);
++  return d === 0 ? null : (n / d) * scale;
++}
++
++export type HeadlineKind = "sum" | "ratio" | "latest" | "stock";
++export interface Headline {
++  kind: HeadlineKind;
++  value: number | null;
++  partial: boolean;
++  /** stock: date of the snapshot ("as of") */
++  asOf?: string;
++  /** latest: periodStart of the distinct-count period */
++  period?: string;
++  /** stock: set when the earliest snapshot is later than the range start */
++  historyStart?: string;
++}
++
++/** Headline of a KPI's un-dimensioned series for the selected range at the selected grain (rule 4 and 3). */
++export function computeHeadline(def: KpiDefinition, points: Point[], from: string): Headline {
++  const empty = (kind: HeadlineKind): Headline => ({ kind, value: null, partial: false });
++  const last = latest(points);
++  const asStock = (): Headline => {
++    if (!last) return empty("stock");
++    const h: Headline = { kind: "stock", value: last.value, partial: !last.complete, asOf: last.periodEnd };
++    if (points[0].periodStart > from) h.historyStart = points[0].periodStart;
++    return h;
++  };
++  const asLatest = (): Headline => (last ? { kind: "latest", value: last.value, partial: !last.complete, period: last.periodStart } : empty("latest"));
++
++  if (def.type === "ratio") {
++    if (SNAPSHOT_RATIOS.has(def.id)) return asStock();
++    if (!points.length) return empty("ratio");
++    if (points.some((p) => p.numerator === null || p.denominator === null)) return asLatest();
++    const r = ratioOfSums(points, def.unit === "percent" ? 100 : 1);
++    if (r === null) return empty("ratio");
++    const value = def.unit === "percent" ? Math.round(r * 10) / 10 : Math.round(r);
++    return { kind: "ratio", value, partial: points.some((p) => !p.complete) };
++  }
++  if (def.type === "stock") return asStock();
++  if (def.grains.some((g) => g !== "daily")) return asLatest(); // distinct counts: never summed
++  if (!points.length) return empty("sum");
++  return { kind: "sum", value: sumPoints(points), partial: points.some((p) => !p.complete) };
++}
++
++export type Tone = "good" | "bad" | "neutral";
++export interface Delta { pct: number; dir: "up" | "down" | "flat"; tone: Tone }
++
++export function toneFor(dir: Delta["dir"], direction: KpiDefinition["direction"]): Tone {
++  if (dir === "flat" || direction === "neutral") return "neutral";
++  if (direction === "higher_is_better") return dir === "up" ? "good" : "bad";
++  return dir === "up" ? "bad" : "good";
++}
++
++/** Percentage change; hidden (null) when either side is absent or the previous value is 0. */
++export function computeDelta(cur: Headline, prev: Headline, direction: KpiDefinition["direction"]): Delta | null {
++  if (cur.value === null || prev.value === null || prev.value === 0) return null;
++  const pct = ((cur.value - prev.value) / Math.abs(prev.value)) * 100;
++  const dir = Math.abs(pct) < 0.05 ? "flat" : pct > 0 ? "up" : "down";
++  return { pct, dir, tone: toneFor(dir, direction) };
++}
++
++export interface KpiSummary { points: Point[]; headline: Headline; prevHeadline: Headline; delta: Delta | null }
++
++/** Everything a tile needs. The previous side never uses `complete: false` periods. */
++export function summarise(def: KpiDefinition, values: KpiValue[], prevValues: KpiValue[], from: string, prevFrom: string): KpiSummary {
++  const points = toSeries(values.filter(isTotal));
++  const prevPoints = toSeries(prevValues.filter(isTotal)).filter((p) => p.complete);
++  const headline = computeHeadline(def, points, from);
++  const prevHeadline = computeHeadline(def, prevPoints, prevFrom);
++  return { points, headline, prevHeadline, delta: computeDelta(headline, prevHeadline, def.direction) };
++}
++
++export interface BreakdownMetrics {
++  attempts: number | null; success: number | null; rate: number | null;
++  gmv: number | null; platformRevenue: number | null; netRevenue: number | null; unverified: number | null;
++}
++/** One table row: range totals for (platform, dimKey = dimValue) from pay.* values at the selected grain. */
++export function breakdownRow(values: KpiValue[], platform: string, dimKey: string, dimValue: string): BreakdownMetrics {
++  const pts = (kpiId: string) => toSeries(values.filter((v) => v.kpiId === kpiId && v.platform === platform && onlyDim(v, dimKey) && v.dimensions[dimKey] === dimValue));
++  const rate = ratioOfSums(pts("pay.success_rate"), 100);
++  return {
++    attempts: sumPoints(pts("pay.attempts")), success: sumPoints(pts("pay.success")),
++    rate: rate === null ? null : Math.round(rate * 10) / 10,
++    gmv: sumPoints(pts("pay.gmv")), platformRevenue: sumPoints(pts("pay.platform_revenue")),
++    netRevenue: sumPoints(pts("pay.net_revenue")), unverified: sumPoints(pts("pay.net_revenue_unverified")),
++  };
++}
+diff --git a/dashboard/src/lib/batch.test.ts b/dashboard/src/lib/batch.test.ts
+new file mode 100644
+index 0000000..eb0e426
+--- /dev/null
++++ b/dashboard/src/lib/batch.test.ts
+@@ -0,0 +1,18 @@
++import { describe, expect, it } from "vitest";
++import { chunk, uniqueSorted } from "./batch";
++
++describe("batch", () => {
++  it("splits more than 30 ids into chunks of at most 30", () => {
++    const ids = Array.from({ length: 65 }, (_, i) => `k.${i}`);
++    const parts = chunk(ids);
++    expect(parts.map((p) => p.length)).toEqual([30, 30, 5]);
++    expect(parts.flat()).toEqual(ids);
++  });
++  it("keeps exactly 30 in one call and handles empty", () => {
++    expect(chunk(Array.from({ length: 30 }, (_, i) => String(i)))).toHaveLength(1);
++    expect(chunk([])).toEqual([]);
++  });
++  it("dedupes and sorts for stable cache keys", () => {
++    expect(uniqueSorted(["b", "a", "b"])).toEqual(["a", "b"]);
++  });
++});
+diff --git a/dashboard/src/lib/batch.ts b/dashboard/src/lib/batch.ts
+new file mode 100644
+index 0000000..efb65e5
+--- /dev/null
++++ b/dashboard/src/lib/batch.ts
+@@ -0,0 +1,12 @@
++/** kpiGetValues accepts at most 30 ids per call. */
++export const MAX_IDS_PER_CALL = 30;
++
++export function chunk<T>(items: T[], size: number = MAX_IDS_PER_CALL): T[][] {
++  const out: T[][] = [];
++  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
++  return out;
++}
++
++export function uniqueSorted(ids: string[]): string[] {
++  return [...new Set(ids)].sort();
++}
+diff --git a/dashboard/src/lib/csv.ts b/dashboard/src/lib/csv.ts
+new file mode 100644
+index 0000000..e73ded9
+--- /dev/null
++++ b/dashboard/src/lib/csv.ts
+@@ -0,0 +1,35 @@
++export type Cell = string | number | boolean | null | undefined;
++
++function esc(c: Cell): string {
++  if (c === null || c === undefined) return "";
++  const s = String(c);
++  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
++}
++
++export function toCsv(rows: Cell[][]): string {
++  return rows.map((r) => r.map(esc).join(",")).join("\n");
++}
++
++export async function copyText(text: string): Promise<boolean> {
++  try {
++    await navigator.clipboard.writeText(text);
++    return true;
++  } catch {
++    const ta = document.createElement("textarea");
++    ta.value = text;
++    document.body.appendChild(ta);
++    ta.select();
++    const ok = document.execCommand("copy");
++    ta.remove();
++    return ok;
++  }
++}
++
++export function downloadText(filename: string, text: string): void {
++  const url = URL.createObjectURL(new Blob([text], { type: "text/csv;charset=utf-8" }));
++  const a = document.createElement("a");
++  a.href = url;
++  a.download = filename;
++  a.click();
++  URL.revokeObjectURL(url);
++}
+diff --git a/dashboard/src/lib/firebase.ts b/dashboard/src/lib/firebase.ts
+new file mode 100644
+index 0000000..8c502c3
+--- /dev/null
++++ b/dashboard/src/lib/firebase.ts
+@@ -0,0 +1,21 @@
++import { initializeApp } from "firebase/app";
++import { getAuth, type Auth } from "firebase/auth";
++import { getFirestore, type Firestore } from "firebase/firestore";
++import { getFunctions, type Functions } from "firebase/functions";
++
++const cfg = {
++  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
++  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
++  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
++  appId: import.meta.env.VITE_FIREBASE_APP_ID,
++};
++
++/** False until the VITE_FIREBASE_* variables are set; AuthGate shows a setup screen instead of crashing. */
++export const configured = Boolean(cfg.apiKey && cfg.projectId && cfg.appId);
++
++const app = configured ? initializeApp(cfg) : null;
++export const auth = (app ? getAuth(app) : null) as Auth;
++export const db = (app ? getFirestore(app) : null) as Firestore;
++export const functions = (app ? getFunctions(app, import.meta.env.VITE_FUNCTIONS_REGION || "us-central1") : null) as Functions;
++
++export const DENIED_EVENT = "kpi:access-denied";
+diff --git a/dashboard/src/lib/format.test.ts b/dashboard/src/lib/format.test.ts
+new file mode 100644
+index 0000000..dc096f8
+--- /dev/null
++++ b/dashboard/src/lib/format.test.ts
+@@ -0,0 +1,37 @@
++import { describe, expect, it } from "vitest";
++import { formatCount, formatDelta, formatHours, formatMoney, formatPercent, formatValue } from "./format";
++
++describe("format", () => {
++  it("money: cents to KES, decimals only below 1,000", () => {
++    expect(formatMoney(12500)).toBe("KES 125.00");
++    expect(formatMoney(123456789)).toBe("KES 1,234,568");
++    expect(formatMoney(100000)).toBe("KES 1,000");
++    expect(formatMoney(99999)).toBe("KES 999.99");
++    expect(formatMoney(-250000)).toBe("-KES 2,500");
++  });
++  it("money: compact form for tiles", () => {
++    expect(formatMoney(120_000_000, { compact: true })).toBe("KES 1.2M");
++    expect(formatMoney(1_250_000, { compact: true })).toBe("KES 12.5K");
++    expect(formatMoney(12500, { compact: true })).toBe("KES 125.00");
++  });
++  it("percent: one decimal", () => {
++    expect(formatPercent(66.666)).toBe("66.7%");
++    expect(formatPercent(0)).toBe("0.0%");
++  });
++  it("count: grouped, compact only above 100,000", () => {
++    expect(formatCount(1234567)).toBe("1,234,567");
++    expect(formatCount(100000, { compact: true })).toBe("100,000");
++    expect(formatCount(150000, { compact: true })).toBe("150K");
++    expect(formatCount(1_200_000, { compact: true })).toBe("1.2M");
++  });
++  it("hours", () => expect(formatHours(3.24)).toBe("3.2 h"));
++  it("absent values render as a dash, never 0", () => {
++    expect(formatValue("count", null)).toBe("—");
++    expect(formatValue("KES_CENTS", undefined)).toBe("—");
++    expect(formatValue("count", 0)).toBe("0");
++  });
++  it("delta", () => {
++    expect(formatDelta(-12.345)).toBe("12.3%");
++    expect(formatDelta(250.4)).toBe("250%");
++  });
++});
+diff --git a/dashboard/src/lib/format.ts b/dashboard/src/lib/format.ts
+new file mode 100644
+index 0000000..e737eb3
+--- /dev/null
++++ b/dashboard/src/lib/format.ts
+@@ -0,0 +1,59 @@
++import type { KpiUnit } from "./types";
++
++const DASH = "—";
++
++function group(n: number): string {
++  return Math.round(n).toLocaleString("en-US");
++}
++function trim1(n: number): string {
++  return n.toFixed(1).replace(/\.0$/, "");
++}
++function compactNumber(abs: number): string {
++  if (abs >= 1e9) return `${trim1(abs / 1e9)}B`;
++  if (abs >= 1e6) return `${trim1(abs / 1e6)}M`;
++  if (abs >= 1e3) return `${trim1(abs / 1e3)}K`;
++  return group(abs);
++}
++
++/** Integer cents → `KES 1,234,567` (no decimals from KES 1,000; two below). Compact: `KES 1.2M`. */
++export function formatMoney(cents: number, opts: { compact?: boolean } = {}): string {
++  if (!Number.isFinite(cents)) return DASH;
++  const kes = cents / 100;
++  const sign = kes < 0 ? "-" : "";
++  const abs = Math.abs(kes);
++  if (opts.compact && abs >= 1000) return `${sign}KES ${compactNumber(abs)}`;
++  if (abs >= 1000) return `${sign}KES ${group(abs)}`;
++  return `${sign}KES ${abs.toFixed(2)}`;
++}
++
++export function formatPercent(v: number): string {
++  return Number.isFinite(v) ? `${v.toFixed(1)}%` : DASH;
++}
++
++/** Grouped integer; compact (`1.2M`, `150K`) only above 100,000 when `compact` is set. */
++export function formatCount(v: number, opts: { compact?: boolean } = {}): string {
++  if (!Number.isFinite(v)) return DASH;
++  const sign = v < 0 ? "-" : "";
++  const abs = Math.abs(v);
++  if (opts.compact && abs > 100_000) return `${sign}${compactNumber(abs)}`;
++  return `${sign}${group(abs)}`;
++}
++
++export function formatHours(v: number): string {
++  return Number.isFinite(v) ? `${v.toFixed(1)} h` : DASH;
++}
++
++export function formatValue(unit: KpiUnit, v: number | null | undefined, opts: { compact?: boolean } = {}): string {
++  if (v === null || v === undefined || !Number.isFinite(v)) return DASH;
++  switch (unit) {
++    case "KES_CENTS": return formatMoney(v, opts);
++    case "percent": return formatPercent(v);
++    case "hours": return formatHours(v);
++    default: return formatCount(v, opts);
++  }
++}
++
++export function formatDelta(pct: number): string {
++  const abs = Math.abs(pct);
++  return `${abs >= 100 ? abs.toFixed(0) : abs.toFixed(1)}%`;
++}
+diff --git a/dashboard/src/lib/freshness.ts b/dashboard/src/lib/freshness.ts
+new file mode 100644
+index 0000000..cf6d9fe
+--- /dev/null
++++ b/dashboard/src/lib/freshness.ts
+@@ -0,0 +1,40 @@
++import type { KpiValue } from "./types";
++
++export const COLLECTORS = ["pay", "pay_stats", "register", "register_stats", "chama", "chama_stats", "pms", "pms_stats", "cyber", "cyber_stats", "rollups"] as const;
++/** Collectors whose absence turns the banner red. */
++export const REQUIRED_COLLECTORS = ["pay", "register", "chama", "pms", "cyber", "rollups"];
++
++export type Status = "green" | "amber" | "red";
++export interface FreshnessRow { collector: string; hours: number | null; status: Status }
++
++export function statusFor(hours: number | null): Status {
++  if (hours === null) return "red";
++  if (hours > 26) return "red";
++  if (hours >= 12) return "amber";
++  return "green";
++}
++
++/** Latest daily `company.data_freshness_hours` value per `collector` dimension. */
++export function freshnessRows(values: KpiValue[]): FreshnessRow[] {
++  const latest = new Map<string, KpiValue>();
++  for (const v of values) {
++    if (v.kpiId !== "company.data_freshness_hours") continue;
++    const c = v.dimensions?.collector;
++    if (!c) continue;
++    const cur = latest.get(c);
++    if (!cur || v.periodStart > cur.periodStart || (v.periodStart === cur.periodStart && v.computedAt > cur.computedAt)) latest.set(c, v);
++  }
++  return COLLECTORS.map((collector) => {
++    const hours = latest.get(collector)?.value ?? null;
++    return { collector, hours, status: statusFor(hours) };
++  });
++}
++
++export type Level = "ok" | "amber" | "red";
++export function freshnessLevel(rows: FreshnessRow[]): Level {
++  const byName = new Map(rows.map((r) => [r.collector, r]));
++  if (REQUIRED_COLLECTORS.some((c) => byName.get(c)?.hours == null)) return "red";
++  if (rows.some((r) => r.hours !== null && r.hours > 26)) return "red";
++  if (rows.some((r) => r.hours !== null && r.hours >= 12)) return "amber";
++  return "ok";
++}
+diff --git a/dashboard/src/lib/layouts.ts b/dashboard/src/lib/layouts.ts
+new file mode 100644
+index 0000000..bb1126c
+--- /dev/null
++++ b/dashboard/src/lib/layouts.ts
+@@ -0,0 +1,139 @@
++import type { KpiDefinition, PlatformId } from "./types";
++
++export interface Group { title: string; ids: string[]; /** always rendered greyed, never fetched */ planned?: boolean }
++export interface PlatformLayout {
++  key: string; title: string; payPlatform: PlatformId;
++  groups: Group[];
++  banner?: string;
++  /** dimensioned tiles: kpi id → dimension key */
++  breakdowns: Record<string, string>;
++}
++
++export const PAY_TILES = ["pay.net_revenue", "pay.platform_revenue", "pay.gmv", "pay.success_rate", "pay.attempts", "pay.failed", "pay.stuck_pending", "pay.net_revenue_unverified"];
++export const PAY_PLATFORMS = ["pms", "register", "chama", "cyber"] as const;
++export const PLATFORM_NAMES: Record<string, string> = { pms: "Plot Yangu", register: "Register", chama: "Chama", cyber: "DESK (Cyber)" };
++
++export const CHARGE_TYPES: Record<string, string[]> = {
++  pms: ["pms_rent", "pms_subscription", "pms_sms", "lmm_instalment", "lmx_instalment", "lmm_settlement", "lmx_transfers", "lmx_withdrawals", "compliance_report"], register: ["register_sms"],
++  chama: ["chama_member_payment", "chama_sms", "chama_plan", "chama_report_credit", "chama_report_alacarte"],
++  cyber: ["cyber_service", "report_charge", "landlord_watch_transcript"],
++};
++export const STREAMS: Record<string, string[]> = {
++  pms: ["commission", "sms", "subscription", "instalments", "transfers", "withdrawals", "reports"], register: ["sms"],
++  chama: ["markup", "sms", "subscription", "reports"], cyber: ["commission", "reports", "lookups"],
++};
++export const STREAM_ORDER = ["commission", "sms", "subscription", "reports", "markup"];
++export const PLAN_ORDER = ["free", "starter", "basic", "growth", "max"];
++export const TIER_ORDER = ["free", "low", "business", "enterprise", "other"];
++
++export const OVERVIEW_CARDS = ["company.net_revenue", "company.platform_revenue", "company.gmv", "company.success_rate", "company.active_accounts", "company.new_accounts", "company.unverified_revenue_share"];
++/** Produced by the parallel cross-project work: hidden until values exist. */
++export const OVERVIEW_OPTIONAL = ["company.active_accounts", "company.new_accounts", "company.unverified_revenue_share"];
++export const MONEY_CARDS = ["company.gmv", "company.platform_revenue", "company.net_revenue", "company.net_revenue_unverified", "company.gateway_fees", "company.pass_through", "company.success_rate"];
++export const CROSS_CARDS = [
++  "company.active_accounts", "company.new_accounts", "company.net_revenue_per_active_account", "company.unverified_revenue_share",
++  "company.data_freshness_max_hours", "company.collectors_stale", "cross.subscription_revenue", "cross.digital_rent_share",
++  "cross.sms_cost_estimate", "cross.sms_margin",
++];
++export const CROSS_OPTIONAL = ["cross.sms_cost_estimate", "cross.sms_margin"];
++export const CROSS_CHART_IDS = ["cross.revenue_share", "cross.stream_share", "cross.sms_units_used", "cross.sms_prepaid_outstanding"];
++
++const MONEY_FROM_PAY = "Money from PAY";
++
++export const LAYOUTS: Record<string, PlatformLayout> = {
++  register: {
++    key: "register", title: "Register (schools)", payPlatform: "register", breakdowns: {},
++    groups: [
++      { title: "Adoption", ids: ["register.schools_marking", "register.schools_messaging", "register.schools_purchasing", "register.schools_total", "register.schools_new"] },
++      { title: "Attendance", ids: ["register.registers_marked", "register.registers_auto_unmarked", "register.register_marking_rate", "register.attendance_rate", "register.students_attended", "register.students_absent", "register.students_excused"] },
++      { title: "SMS", ids: ["register.sms_messages_sent", "register.sms_messages_failed", "register.sms_blocked_no_tokens", "register.sms_success_rate", "register.sms_recipients", "register.sms_scheduled_messages", "register.sms_log_sent", "register.sms_log_failed", "register.sms_provider_success_rate"] },
++      { title: "Tokens", ids: ["register.sms_tokens_used", "register.tokens_sold", "register.tokens_outstanding", "register.schedules_waiting_tokens"] },
++      { title: "People", ids: ["register.teachers_total", "register.school_admins_total", "register.students_total", "register.students_new"] },
++    ],
++  },
++  chama: {
++    key: "chama", title: "Chama", payPlatform: "chama", breakdowns: { "chama.chamas_by_plan": "plan" },
++    groups: [
++      { title: "Adoption", ids: ["chama.chamas_active", "chama.chamas_messaging", "chama.chamas_total", "chama.chamas_new", "chama.members_active", "chama.members_new", "chama.chamas_by_plan", "chama.paid_plans_expiring_14d"] },
++      { title: "Money", ids: ["chama.money_in_volume", "chama.contribution_volume", "chama.contribution_count", "chama.loan_repayment_volume", "chama.loans_disbursed_volume", "chama.mgr_contribution_volume", "chama.mgr_payout_volume", "chama.digital_payment_share", "chama.whatsapp_payment_share"] },
++      { title: "Loans", ids: ["chama.loans_active", "chama.loans_outstanding_balance", "chama.loans_at_risk_count", "chama.loans_at_risk_balance", "chama.portfolio_at_risk"] },
++      { title: "Collections and merry-go-round", ids: ["chama.contributions_overdue_count", "chama.contributions_overdue_amount", "chama.chamas_with_overdue_contributions", "chama.mgr_pots_active", "chama.mgr_pending_shortfall", "chama.mgr_arrears_open_count", "chama.mgr_arrears_open_amount"] },
++      { title: "SMS and credits", ids: ["chama.sms_messages", "chama.sms_recipients_sent", "chama.sms_credits_used", "chama.sms_delivery_rate", "chama.sms_credits_outstanding", "chama.report_credits_outstanding"] },
++    ],
++  },
++  pms: {
++    key: "pms", title: "Plot Yangu (PMS)", payPlatform: "pms",
++    banner: "Plot Yangu data is as of each manager's last sync. Recent days rise as devices sync.",
++    breakdowns: { "pms.users_by_tier": "tier", "pms.collection_rate": "month" },
++    groups: [
++      { title: "Adoption", ids: ["pms.managers_active", "pms.users_new", "pms.users_total", "pms.users_by_tier", "pms.properties_new", "pms.tenants_new"] },
++      { title: "Plans and trials", ids: ["pms.paid_active", "pms.paid_expiring_14d", "pms.paid_lapsed_14d", "pms.trials_started", "pms.trials_active", "pms.trials_expiring_7d", "pms.trials_awaiting_downgrade", "pms.trial_conversion_rate"] },
++      { title: "Sync health", ids: ["pms.users_synced_7d", "pms.paid_stale_sync_7d"] },
++      { title: "Portfolio", ids: ["pms.properties_total", "pms.tenants_active", "pms.units_total", "pms.units_occupied", "pms.occupancy_rate"] },
++      { title: "Rent and billing", ids: ["pms.invoices_issued", "pms.invoiced_amount", "pms.payments_recorded", "pms.rent_collected", "pms.collection_rate", "pms.invoices_unpaid_count", "pms.receivables_outstanding", "pms.invoices_overdue_count", "pms.receivables_overdue"] },
++      { title: "SMS", ids: ["pms.tokens_outstanding", "pms.sms_messages", "pms.sms_recipients_ok", "pms.sms_recipients_failed", "pms.sms_tokens_charged", "pms.sms_success_rate"] },
++    ],
++  },
++  cyber: {
++    key: "cyber", title: "DESK (WhatsApp, House to Rent, agent network)", payPlatform: "cyber", breakdowns: { "cyber.desk_agents_by_rank": "rank" },
++    banner: "Exact WhatsApp numbers exist from the day the usage meter went live; earlier days show only the approximate session-based numbers. Desk commission is derived from the recorded share percentage.",
++    groups: [
++      { title: "WhatsApp usage (exact, needs the usage meter)", ids: ["cyber.wa_users_active", "cyber.wa_messages_in", "cyber.wa_messages_out", "cyber.wa_messages_out_failed", "cyber.wa_delivery_success_rate", "cyber.wa_sessions_started"] },
++      { title: "WhatsApp usage (approximate, available now)", ids: ["cyber.wa_users_seen", "cyber.wa_known_users"] },
++      { title: "House to Rent", ids: ["cyber.house_inquiries_sent", "cyber.house_inquiries_failed", "cyber.house_inquiry_success_rate", "cyber.house_inquiry_credits", "cyber.house_inquiry_managers"] },
++      { title: "Desk agent network", ids: ["cyber.desk_agents_active", "cyber.desk_events", "cyber.desk_gross", "cyber.desk_commission", "cyber.desk_refunds", "cyber.desk_refunded_gross", "cyber.desk_agents_total", "cyber.desk_agents_active_total", "cyber.desk_agents_by_rank", "cyber.desk_customers_total"] },
++      { title: "Coming later", planned: true, ids: ["cyber.shops_total", "cyber.shops_new", "cyber.sales_recorded", "cyber.sales_value", "cyber.expenses_recorded", "cyber.reports_generated", "cyber.report_jobs_failed"] },
++    ],
++  },
++};
++export const PAY_SECTION_TITLE = MONEY_FROM_PAY;
++
++type Fb = [id: string, name: string, type: KpiDefinition["type"], unit: KpiDefinition["unit"], direction: KpiDefinition["direction"], grains: KpiDefinition["grains"]];
++const ALL: KpiDefinition["grains"] = ["daily", "weekly", "monthly"];
++const FALLBACKS: Fb[] = [
++  ["company.active_accounts", "Active accounts", "flow", "count", "higher_is_better", ALL],
++  ["company.new_accounts", "New accounts", "flow", "count", "higher_is_better", ALL],
++  ["company.net_revenue_per_active_account", "Net revenue per active account", "ratio", "KES_CENTS", "higher_is_better", ["weekly", "monthly"]],
++  ["company.unverified_revenue_share", "Unverified revenue share", "ratio", "percent", "lower_is_better", ALL],
++  ["company.data_freshness_max_hours", "Oldest data (hours)", "stock", "hours", "lower_is_better", ["daily"]],
++  ["company.collectors_stale", "Collectors stale", "stock", "count", "lower_is_better", ["daily"]],
++  ["cross.revenue_share", "Revenue share by platform", "ratio", "percent", "neutral", ALL],
++  ["cross.stream_share", "Revenue share by stream", "ratio", "percent", "neutral", ALL],
++  ["cross.subscription_revenue", "Subscription revenue (recurring)", "flow", "KES_CENTS", "higher_is_better", ALL],
++  ["cross.sms_units_used", "SMS units used", "flow", "count", "neutral", ALL],
++  ["cross.sms_prepaid_outstanding", "Prepaid SMS units outstanding", "stock", "count", "neutral", ALL],
++  ["cross.sms_cost_estimate", "SMS provider cost (estimate)", "flow", "KES_CENTS", "lower_is_better", ALL],
++  ["cross.sms_margin", "SMS margin (estimate)", "flow", "KES_CENTS", "higher_is_better", ALL],
++  ["cross.digital_rent_share", "Digital rent share", "ratio", "percent", "higher_is_better", ALL],
++];
++
++/** Used only when a definition document is missing from kpi_definitions (e.g. parallel work not deployed yet). */
++export const FALLBACK_DEFS = new Map<string, KpiDefinition>(FALLBACKS.map(([id, name, type, unit, direction, grains]) => [id, {
++  id, name, description: "", scope: id.startsWith("cross.") ? "cross" : "company", platform: "all", type, unit, grain: grains[0], grains,
++  formula: "", direction, dimensions: [], thresholds: {}, owner: "", decision: "", version: 1, status: "active",
++} satisfies KpiDefinition]));
++
++export function placeholderDef(id: string): KpiDefinition {
++  const fb = FALLBACK_DEFS.get(id);
++  if (fb) return fb;
++  const raw = id.split(".").slice(1).join(" ").replace(/_/g, " ");
++  return {
++    id, name: raw.charAt(0).toUpperCase() + raw.slice(1) || id, description: "", scope: "platform", platform: "all", type: "flow", unit: "count",
++    grain: "daily", grains: ["daily"], formula: "", direction: "neutral", dimensions: [], thresholds: {}, owner: "", decision: "", version: 1, status: "active",
++  };
++}
++
++export function normaliseDefinition(id: string, d: Partial<KpiDefinition>): KpiDefinition {
++  const base = placeholderDef(id);
++  const grain = d.grain ?? base.grain;
++  return {
++    ...base, ...d, id,
++    name: d.name || base.name,
++    grain,
++    grains: d.grains && d.grains.length ? d.grains : [grain],
++    dimensions: d.dimensions ?? [],
++    thresholds: d.thresholds ?? {},
++    status: d.status ?? "active",
++    direction: d.direction ?? "neutral",
++  };
++}
+diff --git a/dashboard/src/lib/nairobi.test.ts b/dashboard/src/lib/nairobi.test.ts
+new file mode 100644
+index 0000000..04c0103
+--- /dev/null
++++ b/dashboard/src/lib/nairobi.test.ts
+@@ -0,0 +1,52 @@
++import { describe, expect, it } from "vitest";
++import { addDays, addMonths, expectedPeriods, formatClock, formatDay, periodLabel, presetsFor, previousRange, rangeLength, startOfWeek, todayNairobi, validateRange } from "./nairobi";
++
++describe("nairobi", () => {
++  it("today rolls over at 21:00 UTC (00:00 Nairobi)", () => {
++    expect(todayNairobi(Date.UTC(2026, 8, 29, 20, 59))).toBe("2026-09-29");
++    expect(todayNairobi(Date.UTC(2026, 8, 29, 21, 0))).toBe("2026-09-30");
++  });
++  it("labels", () => {
++    expect(formatDay("2026-09-29")).toBe("Tue 29 Sep");
++    expect(periodLabel("weekly", "2026-09-28")).toBe("Week of 28 Sep");
++    expect(periodLabel("monthly", "2026-09-01")).toBe("Sep 2026");
++    expect(formatClock(Date.UTC(2026, 8, 29, 21, 5))).toBe("00:05");
++  });
++  it("daily presets across month boundaries", () => {
++    const p = Object.fromEntries(presetsFor("daily", "2026-03-02").map((x) => [x.id, x]));
++    expect(p["7d"]).toMatchObject({ from: "2026-02-24", to: "2026-03-02" });
++    expect(p["this-month"]).toMatchObject({ from: "2026-03-01", to: "2026-03-02" });
++    expect(p["last-month"]).toMatchObject({ from: "2026-02-01", to: "2026-02-28" });
++  });
++  it("handles 29 Feb", () => {
++    expect(addDays("2028-02-28", 1)).toBe("2028-02-29");
++    expect(addDays("2028-02-29", 1)).toBe("2028-03-01");
++    const p = presetsFor("daily", "2028-03-10").find((x) => x.id === "last-month")!;
++    expect(p).toMatchObject({ from: "2028-02-01", to: "2028-02-29" });
++    expect(addMonths("2028-03-31", -1)).toBe("2028-02-01");
++  });
++  it("weekly and monthly presets", () => {
++    expect(startOfWeek("2026-10-04")).toBe("2026-09-28"); // Sunday → previous Monday
++    const w = presetsFor("weekly", "2026-10-02")[0];
++    expect(w).toMatchObject({ from: "2026-08-10", to: "2026-10-02" });
++    const m = presetsFor("monthly", "2026-01-15")[0];
++    expect(m).toMatchObject({ from: "2025-08-01", to: "2026-01-15" });
++  });
++  it("previous range is equal length and adjacent", () => {
++    expect(previousRange("2026-09-24", "2026-09-30")).toEqual({ from: "2026-09-17", to: "2026-09-23" });
++    expect(rangeLength("2026-09-24", "2026-09-30")).toBe(7);
++  });
++  it("validates ranges", () => {
++    const t = "2026-10-02";
++    expect(validateRange("2026-09-01", "2026-09-30", t)).toBeNull();
++    expect(validateRange("2026-09-30", "2026-09-01", t)).toMatch(/before/);
++    expect(validateRange("2026-09-01", "2026-10-03", t)).toMatch(/future/);
++    expect(validateRange("2025-01-01", "2026-10-02", t)).toMatch(/400/);
++    expect(validateRange("nope", "2026-10-02", t)).toMatch(/valid/);
++  });
++  it("expected periods per grain", () => {
++    expect(expectedPeriods("daily", "2026-09-29", "2026-10-01")).toEqual(["2026-09-29", "2026-09-30", "2026-10-01"]);
++    expect(expectedPeriods("weekly", "2026-09-29", "2026-10-13")).toEqual(["2026-10-05", "2026-10-12"]);
++    expect(expectedPeriods("monthly", "2026-08-15", "2026-10-02")).toEqual(["2026-09-01", "2026-10-01"]);
++  });
++});
+diff --git a/dashboard/src/lib/nairobi.ts b/dashboard/src/lib/nairobi.ts
+new file mode 100644
+index 0000000..a32117f
+--- /dev/null
++++ b/dashboard/src/lib/nairobi.ts
+@@ -0,0 +1,128 @@
++import type { Grain } from "./types";
++
++const DAY_MS = 86_400_000;
++const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
++const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
++
++export const MAX_RANGE_DAYS = 400;
++
++/** Africa/Nairobi is UTC+3 with no DST. Never use the browser's timezone for period logic. */
++export function todayNairobi(now: number = Date.now()): string {
++  return new Date(now + 3 * 3600 * 1000).toISOString().slice(0, 10);
++}
++
++export function toUtc(iso: string): number {
++  const [y, m, d] = iso.split("-").map(Number);
++  return Date.UTC(y, m - 1, d);
++}
++export function fromUtc(ms: number): string {
++  return new Date(ms).toISOString().slice(0, 10);
++}
++export function isIsoDay(s: string | null | undefined): s is string {
++  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
++  return fromUtc(toUtc(s)) === s;
++}
++export function addDays(iso: string, n: number): string {
++  return fromUtc(toUtc(iso) + n * DAY_MS);
++}
++/** b - a in whole days. */
++export function diffDays(a: string, b: string): number {
++  return Math.round((toUtc(b) - toUtc(a)) / DAY_MS);
++}
++/** Monday of the week containing `iso`. */
++export function startOfWeek(iso: string): string {
++  const dow = new Date(toUtc(iso)).getUTCDay();
++  return addDays(iso, -((dow + 6) % 7));
++}
++export function startOfMonth(iso: string): string {
++  return iso.slice(0, 8) + "01";
++}
++/** First day of the month `n` months from the month of `iso`. */
++export function addMonths(iso: string, n: number): string {
++  const [y, m] = iso.split("-").map(Number);
++  return fromUtc(Date.UTC(y, m - 1 + n, 1));
++}
++export function endOfMonth(iso: string): string {
++  return addDays(addMonths(iso, 1), -1);
++}
++
++export interface Range { from: string; to: string }
++export interface Preset extends Range { id: string; label: string }
++
++export function presetsFor(grain: Grain, today: string): Preset[] {
++  if (grain === "daily") {
++    const lastMonthStart = addMonths(today, -1);
++    return [
++      { id: "7d", label: "Last 7 days", from: addDays(today, -6), to: today },
++      { id: "30d", label: "Last 30 days", from: addDays(today, -29), to: today },
++      { id: "90d", label: "Last 90 days", from: addDays(today, -89), to: today },
++      { id: "this-month", label: "This month", from: startOfMonth(today), to: today },
++      { id: "last-month", label: "Last month", from: lastMonthStart, to: endOfMonth(lastMonthStart) },
++    ];
++  }
++  if (grain === "weekly") {
++    const monday = startOfWeek(today);
++    return [8, 12, 26].map((n) => ({ id: `${n}w`, label: `Last ${n} weeks`, from: addDays(monday, -7 * (n - 1)), to: today }));
++  }
++  const first = startOfMonth(today);
++  return [6, 12].map((n) => ({ id: `${n}m`, label: `Last ${n} months`, from: addMonths(first, -(n - 1)), to: today }));
++}
++
++export function defaultPreset(grain: Grain, today: string): Preset {
++  return presetsFor(grain, today)[0];
++}
++
++export function rangeLength(from: string, to: string): number {
++  return diffDays(from, to) + 1;
++}
++
++/** The equal-length range that ends the day before `from`. */
++export function previousRange(from: string, to: string): Range {
++  const len = rangeLength(from, to);
++  return { from: addDays(from, -len), to: addDays(from, -1) };
++}
++
++export function validateRange(from: string, to: string, today: string): string | null {
++  if (!isIsoDay(from) || !isIsoDay(to)) return "Enter valid dates.";
++  if (from > to) return "Start date must be on or before the end date.";
++  if (to > today) return "End date cannot be in the future.";
++  if (rangeLength(from, to) > MAX_RANGE_DAYS) return `Range is limited to ${MAX_RANGE_DAYS} days.`;
++  return null;
++}
++
++/** periodStart values a grain can produce inside [from, to] (used to leave gaps for absent periods). */
++export function expectedPeriods(grain: Grain, from: string, to: string): string[] {
++  const out: string[] = [];
++  if (from > to) return out;
++  if (grain === "daily") {
++    for (let d = from; d <= to; d = addDays(d, 1)) out.push(d);
++  } else if (grain === "weekly") {
++    let d = startOfWeek(from);
++    if (d < from) d = addDays(d, 7);
++    for (; d <= to; d = addDays(d, 7)) out.push(d);
++  } else {
++    let d = startOfMonth(from);
++    if (d < from) d = addMonths(d, 1);
++    for (; d <= to; d = addMonths(d, 1)) out.push(d);
++  }
++  return out;
++}
++
++/** `Tue 29 Sep` */
++export function formatDay(iso: string): string {
++  const dt = new Date(toUtc(iso));
++  return `${DOW[dt.getUTCDay()]} ${dt.getUTCDate()} ${MON[dt.getUTCMonth()]}`;
++}
++
++/** daily `Tue 29 Sep`, weekly `Week of 28 Sep`, monthly `Sep 2026` */
++export function periodLabel(grain: Grain, periodStart: string): string {
++  const dt = new Date(toUtc(periodStart));
++  if (grain === "daily") return formatDay(periodStart);
++  if (grain === "weekly") return `Week of ${dt.getUTCDate()} ${MON[dt.getUTCMonth()]}`;
++  return `${MON[dt.getUTCMonth()]} ${dt.getUTCFullYear()}`;
++}
++
++/** HH:MM in Nairobi time. */
++export function formatClock(ms: number): string {
++  return new Date(ms + 3 * 3600 * 1000).toISOString().slice(11, 16);
++}
+diff --git a/dashboard/src/lib/types.ts b/dashboard/src/lib/types.ts
+new file mode 100644
+index 0000000..3dc347e
+--- /dev/null
++++ b/dashboard/src/lib/types.ts
+@@ -0,0 +1,33 @@
++export type Grain = "daily" | "weekly" | "monthly";
++export type KpiType = "flow" | "stock" | "ratio";
++export type KpiUnit = "count" | "KES_CENTS" | "percent" | "hours";
++export type PlatformId = "pms" | "register" | "chama" | "cyber" | "all";
++export interface KpiDefinition {
++  id: string; name: string; description: string;
++  scope: "company" | "platform" | "cross";
++  platform: PlatformId;
++  type: KpiType; unit: KpiUnit;
++  grain: Grain;          // finest grain
++  grains: Grain[];       // grains written directly by the backend; "distinct count" KPIs list daily+weekly+monthly
++  formula: string; numeratorDesc?: string; denominatorDesc?: string;
++  direction: "higher_is_better" | "lower_is_better" | "neutral";
++  dimensions: string[];  // dimension keys this KPI may carry
++  thresholds: { warn?: number; critical?: number };
++  owner: string; caveat?: string; decision: string;
++  version: number; status: "active" | "planned" | "deprecated";
++}
++export interface KpiValue {
++  id: string; kpiId: string; platform: PlatformId; grain: Grain;
++  periodStart: string;   // YYYY-MM-DD, Africa/Nairobi
++  periodEnd: string;     // inclusive
++  value: number;
++  numerator: number | null; denominator: number | null;   // always set for ratios
++  dimensions: Record<string, string>;                      // {} = the un-dimensioned total
++  customerKey: null; definitionVersion: number;
++  complete: boolean;     // false while the period is still running (or inputs are partial)
++  computedAt: number; runId: string;
++}
++export interface KpiRun {
++  id: string; collector: string; periodStart: string; periodEnd: string;
++  status: "success" | "error"; startedAt: number; durationMs: number; rowsWritten: number; error: string | null;
++}
+diff --git a/docs/glossary.md b/docs/glossary.md
+index d3a574b..c87a73e 100644
+--- a/docs/glossary.md
++++ b/docs/glossary.md
+@@ -53,3 +53,19 @@ Not counted: shop customer charges (`SHOP_`) and movie subscriptions (`MOV_`), b
+ | **Portfolio at risk** | Outstanding balance of loans with an installment past due, divided by the whole loan book. |
+ | **Overdue contribution** | A contribution period the nightly sweep flagged overdue. |
+ | **MGR** | Merry-go-round pot. Pending shortfall and open arrears measure money the pot is still owed. |
++
++
++---
++
++# Terms added with the Nov 2026 update
++
++| Term | Meaning |
++|------|---------|
++| **Lipa Mos Mos / Lipa Mdogo Mdogo** | Tenants pay rent in small instalments; PAY credits the landlord and settles by transfer. |
++| **Instalment revenue** | Surcharge (Lipa Mos Mos) or service fee plus transfer-cost reserve (Lipa Mdogo Mdogo), less the desk share and Paystack fee. |
++| **Transfer margin** | Settlement and reserve money collected, less the real Paystack transfer cost. |
++| **Revenue-only line** | A money line (settlement fee, ledger row, revenue record) that is not a customer checkout: counts in revenue, not in attempts or success rate. |
++| **Convenience fee** | The tier-based percentage of rent the landlord pays the platform for collecting through Paystack. |
++| **Desk agent / rank** | A DESK distribution agent: clerk, senior, lead, admin or internal. |
++| **Desk commission** | The agent's share of a desk-attributed payment, derived from the recorded share percentage. |
++| **House to Rent inquiry** | A tenant's SMS inquiry to a manager about a vacant unit, charged in SMS credits. |
+diff --git a/docs/kpi-catalogue.json b/docs/kpi-catalogue.json
+index 92dcbcb..e6d8bc2 100644
+--- a/docs/kpi-catalogue.json
++++ b/docs/kpi-catalogue.json
+@@ -1905,7 +1905,7 @@
+     "description": "PMS accounts per subscription tier.",
+     "type": "stock",
+     "unit": "count",
+-    "formula": "Count of users with each tier value. Dimension: tier (free, low, business, enterprise; anything else is counted as other).",
++    "formula": "Count of users with each tier value. Dimension: tier (free, low, business, solo, pro, enterprise; anything else is counted as other).",
+     "decision": "Plan mix and upgrade pressure."
+   },
+   {
+@@ -2113,12 +2113,11 @@
+     "platform": "pms",
+     "owner": "Sam",
+     "id": "pms.tokens_outstanding",
+-    "caveat": "Balance only: SMS consumption is not synced to the cloud.",
+     "name": "Unspent SMS tokens",
+-    "description": "Prepaid PMS SMS tokens held by managers. Consumption is not synced to the cloud, so only the balance is visible.",
++    "description": "Prepaid Plot Yangu SMS credits held by managers (users.tokens).",
+     "type": "stock",
+     "unit": "count",
+-    "formula": "Sum of messageTokens across PMS users.",
++    "formula": "Sum of the tokens field across PMS users (legacy messageTokens is used when tokens is absent).",
+     "decision": "Sold-but-unused credit."
+   },
+   {
+@@ -2339,6 +2338,113 @@
+     "denominatorDesc": "Amount invoiced for the month",
+     "decision": "Core outcome for property managers; low rates predict churn."
+   },
++  {
++    "thresholds": {},
++    "version": 1,
++    "status": "active",
++    "dimensions": [],
++    "direction": "higher_is_better",
++    "grain": "daily",
++    "grains": [
++      "daily"
++    ],
++    "scope": "platform",
++    "platform": "pms",
++    "owner": "Sam",
++    "id": "pms.sms_messages",
++    "name": "SMS sends",
++    "description": "Bulk SMS sends from Plot Yangu accounts, including House to Rent inquiries.",
++    "type": "flow",
++    "unit": "count",
++    "formula": "Count of sms-sent-log entries sent on the day.",
++    "decision": "Feature usage."
++  },
++  {
++    "thresholds": {},
++    "version": 1,
++    "status": "active",
++    "dimensions": [],
++    "direction": "higher_is_better",
++    "grain": "daily",
++    "grains": [
++      "daily"
++    ],
++    "scope": "platform",
++    "platform": "pms",
++    "owner": "Sam",
++    "id": "pms.sms_recipients_ok",
++    "name": "SMS recipients reached",
++    "description": "Recipients the provider accepted.",
++    "type": "flow",
++    "unit": "count",
++    "formula": "Sum of successCount over sms-sent-log entries (acceptance, not handset delivery).",
++    "decision": "Volume behind credit use."
++  },
++  {
++    "thresholds": {},
++    "version": 1,
++    "status": "active",
++    "dimensions": [],
++    "direction": "lower_is_better",
++    "grain": "daily",
++    "grains": [
++      "daily"
++    ],
++    "scope": "platform",
++    "platform": "pms",
++    "owner": "Sam",
++    "id": "pms.sms_recipients_failed",
++    "name": "SMS recipients failed",
++    "description": "Recipients the provider rejected.",
++    "type": "flow",
++    "unit": "count",
++    "formula": "Sum of failCount over sms-sent-log entries.",
++    "decision": "Provider or number-quality trouble."
++  },
++  {
++    "thresholds": {},
++    "version": 1,
++    "status": "active",
++    "dimensions": [],
++    "direction": "neutral",
++    "grain": "daily",
++    "grains": [
++      "daily"
++    ],
++    "scope": "platform",
++    "platform": "pms",
++    "owner": "Sam",
++    "id": "pms.sms_tokens_charged",
++    "name": "SMS credits used",
++    "description": "Credits charged for SMS (net of refunds on failed sends).",
++    "type": "flow",
++    "unit": "count",
++    "formula": "Sum of tokensCharged over sms-sent-log entries.",
++    "decision": "Burn rate; pair with credits sold (PAY) to predict top-ups."
++  },
++  {
++    "thresholds": {},
++    "version": 1,
++    "status": "active",
++    "dimensions": [],
++    "direction": "higher_is_better",
++    "grain": "daily",
++    "grains": [
++      "daily"
++    ],
++    "scope": "platform",
++    "platform": "pms",
++    "owner": "Sam",
++    "id": "pms.sms_success_rate",
++    "name": "SMS acceptance rate",
++    "description": "Share of recipients the provider accepted.",
++    "type": "ratio",
++    "unit": "percent",
++    "formula": "successCount / (successCount + failCount) x 100.",
++    "numeratorDesc": "Recipients accepted",
++    "denominatorDesc": "Recipients accepted or failed",
++    "decision": "Falling rate points at bad numbers or provider trouble."
++  },
+   {
+     "thresholds": {},
+     "version": 1,
+@@ -2660,6 +2766,334 @@
+     "formula": "Count of failed report jobs. Not collected yet.",
+     "decision": "Reliability of a paid feature."
+   },
++  {
++    "thresholds": {},
++    "version": 1,
++    "status": "active",
++    "dimensions": [],
++    "direction": "higher_is_better",
++    "grain": "daily",
++    "grains": [
++      "daily"
++    ],
++    "scope": "platform",
++    "platform": "cyber",
++    "owner": "Sam",
++    "id": "cyber.house_inquiries_sent",
++    "name": "House inquiries sent",
++    "description": "Tenant inquiries about a vacant unit that reached the manager by SMS.",
++    "type": "flow",
++    "unit": "count",
++    "formula": "Count of houseInquiries with status sent on the day.",
++    "decision": "Demand for vacant units; feeds landlord leads."
++  },
++  {
++    "thresholds": {},
++    "version": 1,
++    "status": "active",
++    "dimensions": [],
++    "direction": "lower_is_better",
++    "grain": "daily",
++    "grains": [
++      "daily"
++    ],
++    "scope": "platform",
++    "platform": "cyber",
++    "owner": "Sam",
++    "id": "cyber.house_inquiries_failed",
++    "name": "House inquiries failed",
++    "description": "Inquiries the SMS provider rejected.",
++    "type": "flow",
++    "unit": "count",
++    "formula": "Count of houseInquiries with status failed on the day.",
++    "decision": "Provider trouble or unreachable managers."
++  },
++  {
++    "thresholds": {},
++    "version": 1,
++    "status": "active",
++    "dimensions": [],
++    "direction": "higher_is_better",
++    "grain": "daily",
++    "grains": [
++      "daily"
++    ],
++    "scope": "platform",
++    "platform": "cyber",
++    "owner": "Sam",
++    "id": "cyber.house_inquiry_success_rate",
++    "name": "House inquiry success rate",
++    "description": "Share of inquiries delivered to the provider.",
++    "type": "ratio",
++    "unit": "percent",
++    "formula": "sent / (sent + failed) x 100.",
++    "numeratorDesc": "Inquiries sent",
++    "denominatorDesc": "Inquiries sent or failed",
++    "decision": "Reliability of the feature."
++  },
++  {
++    "thresholds": {},
++    "version": 1,
++    "status": "active",
++    "dimensions": [],
++    "direction": "neutral",
++    "grain": "daily",
++    "grains": [
++      "daily"
++    ],
++    "scope": "platform",
++    "platform": "cyber",
++    "owner": "Sam",
++    "id": "cyber.house_inquiry_credits",
++    "name": "House inquiry credits charged",
++    "description": "SMS credits charged to managers for inquiries.",
++    "type": "flow",
++    "unit": "count",
++    "formula": "Sum of credits over inquiries with status sent.",
++    "decision": "Credit burn caused by the feature."
++  },
++  {
++    "thresholds": {},
++    "version": 1,
++    "status": "active",
++    "dimensions": [],
++    "direction": "neutral",
++    "grain": "daily",
++    "grains": [
++      "daily"
++    ],
++    "scope": "platform",
++    "platform": "cyber",
++    "owner": "Sam",
++    "id": "cyber.house_inquiry_managers",
++    "name": "Managers receiving inquiries",
++    "description": "Distinct property owners whose vacant units were inquired about.",
++    "type": "flow",
++    "unit": "count",
++    "formula": "Distinct ownerId over sent inquiries on the day.",
++    "decision": "Breadth of supply that tenants find."
++  },
++  {
++    "thresholds": {},
++    "version": 1,
++    "status": "active",
++    "dimensions": [
++      "product"
++    ],
++    "direction": "higher_is_better",
++    "grain": "daily",
++    "grains": [
++      "daily"
++    ],
++    "scope": "platform",
++    "platform": "cyber",
++    "owner": "Sam",
++    "id": "cyber.desk_events",
++    "name": "Desk-attributed payments",
++    "description": "Payments credited to a desk agent (SMS, plans, reports, rent). Refunds excluded.",
++    "type": "flow",
++    "unit": "count",
++    "formula": "Count of desk_events that are not refunds. Dimension product: chama, school, pms.",
++    "decision": "Reach of the agent network by product."
++  },
++  {
++    "thresholds": {},
++    "version": 1,
++    "status": "active",
++    "dimensions": [
++      "product"
++    ],
++    "direction": "higher_is_better",
++    "grain": "daily",
++    "grains": [
++      "daily"
++    ],
++    "scope": "platform",
++    "platform": "cyber",
++    "owner": "Sam",
++    "id": "cyber.desk_gross",
++    "name": "Desk-attributed volume",
++    "description": "Money charged on payments attributed to desk agents. Not revenue.",
++    "type": "flow",
++    "unit": "KES_CENTS",
++    "formula": "Sum of grossMinor over desk_events that are not refunds. Dimension product.",
++    "decision": "How much of the business the network drives."
++  },
++  {
++    "thresholds": {},
++    "version": 1,
++    "status": "active",
++    "dimensions": [
++      "product"
++    ],
++    "direction": "neutral",
++    "grain": "daily",
++    "grains": [
++      "daily"
++    ],
++    "scope": "platform",
++    "platform": "cyber",
++    "owner": "Sam",
++    "id": "cyber.desk_commission",
++    "caveat": "Derived from the recorded share %; the money itself moves in the Paystack split.",
++    "name": "Desk commission earned",
++    "description": "Commission earned by desk agents on attributed payments.",
++    "type": "flow",
++    "unit": "KES_CENTS",
++    "formula": "Sum of (grossMinor - feeMinor) x agentSharePct / 100 over desk_events that are not refunds. Dimension product.",
++    "decision": "Cost of the agent channel; compare with revenue it drives."
++  },
++  {
++    "thresholds": {},
++    "version": 1,
++    "status": "active",
++    "dimensions": [],
++    "direction": "lower_is_better",
++    "grain": "daily",
++    "grains": [
++      "daily"
++    ],
++    "scope": "platform",
++    "platform": "cyber",
++    "owner": "Sam",
++    "id": "cyber.desk_refunds",
++    "name": "Desk refunds",
++    "description": "Desk events that reverse an earlier payment.",
++    "type": "flow",
++    "unit": "count",
++    "formula": "Count of desk_events of type refund.",
++    "decision": "Quality of agent-sourced sales."
++  },
++  {
++    "thresholds": {},
++    "version": 1,
++    "status": "active",
++    "dimensions": [],
++    "direction": "lower_is_better",
++    "grain": "daily",
++    "grains": [
++      "daily"
++    ],
++    "scope": "platform",
++    "platform": "cyber",
++    "owner": "Sam",
++    "id": "cyber.desk_refunded_gross",
++    "name": "Desk refunded volume",
++    "description": "Value of refunded desk-attributed payments.",
++    "type": "flow",
++    "unit": "KES_CENTS",
++    "formula": "Sum of grossMinor over refund desk_events.",
++    "decision": "Clawback exposure."
++  },
++  {
++    "thresholds": {},
++    "version": 1,
++    "status": "active",
++    "dimensions": [],
++    "direction": "higher_is_better",
++    "grain": "daily",
++    "grains": [
++      "daily",
++      "weekly",
++      "monthly"
++    ],
++    "scope": "platform",
++    "platform": "cyber",
++    "owner": "Sam",
++    "id": "cyber.desk_agents_active",
++    "name": "Active desk agents",
++    "description": "Distinct agents with at least one attributed payment in the period.",
++    "type": "flow",
++    "unit": "count",
++    "formula": "Distinct agentId over desk_events that are not refunds. Daily, weekly (Mon-Sun) and monthly values.",
++    "decision": "How many agents actually sell."
++  },
++  {
++    "thresholds": {},
++    "version": 1,
++    "status": "active",
++    "dimensions": [],
++    "direction": "neutral",
++    "grain": "daily",
++    "grains": [
++      "daily"
++    ],
++    "scope": "platform",
++    "platform": "cyber",
++    "owner": "Sam",
++    "id": "cyber.desk_agents_total",
++    "name": "Desk agents (total)",
++    "description": "Agent accounts at snapshot time, any status.",
++    "type": "stock",
++    "unit": "count",
++    "formula": "Count of desk_agents at 23:55 Nairobi.",
++    "decision": "Size of the network."
++  },
++  {
++    "thresholds": {},
++    "version": 1,
++    "status": "active",
++    "dimensions": [],
++    "direction": "neutral",
++    "grain": "daily",
++    "grains": [
++      "daily"
++    ],
++    "scope": "platform",
++    "platform": "cyber",
++    "owner": "Sam",
++    "id": "cyber.desk_agents_active_total",
++    "name": "Desk agents (active status)",
++    "description": "Agent accounts with status active.",
++    "type": "stock",
++    "unit": "count",
++    "formula": "Count of desk_agents with status active.",
++    "decision": "Usable network capacity."
++  },
++  {
++    "thresholds": {},
++    "version": 1,
++    "status": "active",
++    "dimensions": [
++      "rank"
++    ],
++    "direction": "neutral",
++    "grain": "daily",
++    "grains": [
++      "daily"
++    ],
++    "scope": "platform",
++    "platform": "cyber",
++    "owner": "Sam",
++    "id": "cyber.desk_agents_by_rank",
++    "name": "Desk agents by rank",
++    "description": "Agent accounts per rank at snapshot time.",
++    "type": "stock",
++    "unit": "count",
++    "formula": "Count of desk_agents per rank. Dimension rank: clerk, senior, lead, admin, internal.",
++    "decision": "Shape of the hierarchy."
++  },
++  {
++    "thresholds": {},
++    "version": 1,
++    "status": "active",
++    "dimensions": [],
++    "direction": "neutral",
++    "grain": "daily",
++    "grains": [
++      "daily"
++    ],
++    "scope": "platform",
++    "platform": "cyber",
++    "owner": "Sam",
++    "id": "cyber.desk_customers_total",
++    "name": "Desk-attributed customers",
++    "description": "Customers owned by a desk agent.",
++    "type": "stock",
++    "unit": "count",
++    "formula": "Count of desk_customers at 23:55 Nairobi.",
++    "decision": "Book of business held by the network."
++  },
+   {
+     "thresholds": {},
+     "version": 1,
+@@ -3041,7 +3475,7 @@
+     "platform": "all",
+     "type": "ratio",
+     "unit": "percent",
+-    "formula": "For stream S in {commission,sms,subscription,reports,markup}: company.net_revenue{stream=S} / company.net_revenue (no dimensions) x 100. Dimension stream=S.",
++    "formula": "For stream S in {commission,sms,subscription,reports,markup,instalments,transfers,withdrawals,lookups}: company.net_revenue{stream=S} / company.net_revenue (no dimensions) x 100. Dimension stream=S.",
+     "numeratorDesc": "Company net revenue of the stream (KES cents)",
+     "denominatorDesc": "Company net revenue (KES cents)",
+     "owner": "Sam",
+@@ -3091,7 +3525,7 @@
+     "platform": "all",
+     "type": "flow",
+     "unit": "count",
+-    "formula": "register.sms_tokens_used (platform=register) + chama.sms_credits_used (platform=chama) at the same grain, plus a no-dimension total. Plot Yangu is excluded: its SMS consumption is not synced.",
++    "formula": "register.sms_tokens_used (platform=register) + chama.sms_credits_used (platform=chama) + pms.sms_tokens_charged (platform=pms) at the same grain, plus a no-dimension total.",
+     "owner": "Sam",
+     "decision": "How much SMS capacity are customers consuming, and does the provider bill need renegotiating?",
+     "caveat": "Register tokens used is an estimate (deducted in the browser)."
+@@ -3163,7 +3597,7 @@
+     "platform": "all",
+     "type": "flow",
+     "unit": "KES_CENTS",
+-    "formula": "(pay.net_revenue{stream=sms} for platform=register + same for platform=chama) - cross.sms_cost_estimate. Emit only when cross.sms_cost_estimate exists. Plot Yangu SMS revenue is excluded because its usage is unknown.",
++    "formula": "(pay.net_revenue{stream=sms} for platform=register + same for platforms chama and pms) - cross.sms_cost_estimate. Emit only when cross.sms_cost_estimate exists.",
+     "owner": "Sam",
+     "decision": "Is selling SMS credits profitable, or should SMS prices change?",
+     "caveat": "Needs the SMS provider cost per unit to be configured."
+diff --git a/docs/kpi-catalogue.md b/docs/kpi-catalogue.md
+index 89f9033..319477b 100644
+--- a/docs/kpi-catalogue.md
++++ b/docs/kpi-catalogue.md
+@@ -1,6 +1,6 @@
+ # KPI catalogue (generated)
+ 
+-146 KPIs.
++166 KPIs.
+ 
+ | id | name | scope | platform | type | unit | grains | dimensions | direction | status | caveat |
+ |----|------|-------|----------|------|------|--------|------------|-----------|--------|--------|
+@@ -100,7 +100,7 @@
+ | `pms.trials_expiring_7d` | Trials ending in 7 days | platform | pms | stock | count | daily | - | neutral | active |  |
+ | `pms.trials_awaiting_downgrade` | Expired trials not yet downgraded | platform | pms | stock | count | daily | - | neutral | active |  |
+ | `pms.trial_conversion_rate` | Trial to paid conversion | platform | pms | ratio | percent | daily | - | higher_is_better | active |  |
+-| `pms.tokens_outstanding` | Unspent SMS tokens | platform | pms | stock | count | daily | - | neutral | active | Balance only: SMS consumption is not synced to the cloud. |
++| `pms.tokens_outstanding` | Unspent SMS tokens | platform | pms | stock | count | daily | - | neutral | active |  |
+ | `pms.properties_total` | Properties (total) | platform | pms | stock | count | daily | - | neutral | active |  |
+ | `pms.tenants_active` | Active tenants | platform | pms | stock | count | daily | - | neutral | active |  |
+ | `pms.units_total` | Units (total) | platform | pms | stock | count | daily | - | neutral | active |  |
+@@ -111,6 +111,11 @@
+ | `pms.invoices_overdue_count` | Overdue invoices | platform | pms | stock | count | daily | - | lower_is_better | active |  |
+ | `pms.receivables_overdue` | Rent overdue | platform | pms | stock | KES_CENTS | daily | - | lower_is_better | active |  |
+ | `pms.collection_rate` | Rent collection rate (billing month) | platform | pms | ratio | percent | daily | month | higher_is_better | active | As of last sync; a billing month matures as tenants pay. |
++| `pms.sms_messages` | SMS sends | platform | pms | flow | count | daily | - | higher_is_better | active |  |
++| `pms.sms_recipients_ok` | SMS recipients reached | platform | pms | flow | count | daily | - | higher_is_better | active |  |
++| `pms.sms_recipients_failed` | SMS recipients failed | platform | pms | flow | count | daily | - | lower_is_better | active |  |
++| `pms.sms_tokens_charged` | SMS credits used | platform | pms | flow | count | daily | - | neutral | active |  |
++| `pms.sms_success_rate` | SMS acceptance rate | platform | pms | ratio | percent | daily | - | higher_is_better | active |  |
+ | `cyber.wa_messages_in` | WhatsApp messages received | platform | cyber | flow | count | daily | - | higher_is_better | active |  |
+ | `cyber.wa_messages_out` | WhatsApp messages sent | platform | cyber | flow | count | daily | - | neutral | active |  |
+ | `cyber.wa_messages_out_failed` | WhatsApp sends failed | platform | cyber | flow | count | daily | - | lower_is_better | active |  |
+@@ -126,6 +131,21 @@
+ | `cyber.expenses_recorded` | Expenses recorded | platform | cyber | flow | count | daily | - | neutral | planned |  |
+ | `cyber.reports_generated` | Reports generated | platform | cyber | flow | count | daily | - | neutral | planned |  |
+ | `cyber.report_jobs_failed` | Report jobs failed | platform | cyber | flow | count | daily | - | lower_is_better | planned |  |
++| `cyber.house_inquiries_sent` | House inquiries sent | platform | cyber | flow | count | daily | - | higher_is_better | active |  |
++| `cyber.house_inquiries_failed` | House inquiries failed | platform | cyber | flow | count | daily | - | lower_is_better | active |  |
++| `cyber.house_inquiry_success_rate` | House inquiry success rate | platform | cyber | ratio | percent | daily | - | higher_is_better | active |  |
++| `cyber.house_inquiry_credits` | House inquiry credits charged | platform | cyber | flow | count | daily | - | neutral | active |  |
++| `cyber.house_inquiry_managers` | Managers receiving inquiries | platform | cyber | flow | count | daily | - | neutral | active |  |
++| `cyber.desk_events` | Desk-attributed payments | platform | cyber | flow | count | daily | product | higher_is_better | active |  |
++| `cyber.desk_gross` | Desk-attributed volume | platform | cyber | flow | KES_CENTS | daily | product | higher_is_better | active |  |
++| `cyber.desk_commission` | Desk commission earned | platform | cyber | flow | KES_CENTS | daily | product | neutral | active | Derived from the recorded share %; the money itself moves in the Paystack split. |
++| `cyber.desk_refunds` | Desk refunds | platform | cyber | flow | count | daily | - | lower_is_better | active |  |
++| `cyber.desk_refunded_gross` | Desk refunded volume | platform | cyber | flow | KES_CENTS | daily | - | lower_is_better | active |  |
++| `cyber.desk_agents_active` | Active desk agents | platform | cyber | flow | count | daily/weekly/monthly | - | higher_is_better | active |  |
++| `cyber.desk_agents_total` | Desk agents (total) | platform | cyber | stock | count | daily | - | neutral | active |  |
++| `cyber.desk_agents_active_total` | Desk agents (active status) | platform | cyber | stock | count | daily | - | neutral | active |  |
++| `cyber.desk_agents_by_rank` | Desk agents by rank | platform | cyber | stock | count | daily | rank | neutral | active |  |
++| `cyber.desk_customers_total` | Desk-attributed customers | platform | cyber | stock | count | daily | - | neutral | active |  |
+ | `company.attempts` | Payment attempts (company) | company | all | flow | count | daily | stream | neutral | active |  |
+ | `company.success` | Successful payments (company) | company | all | flow | count | daily | stream | higher_is_better | active |  |
+ | `company.success_rate` | Payment success rate (company) | company | all | ratio | percent | daily | stream | higher_is_better | active |  |
+diff --git a/docs/source-of-truth.md b/docs/source-of-truth.md
+index 6b3c2ee..bc55dc8 100644
+--- a/docs/source-of-truth.md
++++ b/docs/source-of-truth.md
+@@ -100,14 +100,14 @@ Database: the default database (`plot-9fd6e`), shared with PAY and Cyber. PMS is
+ 
+ | KPI group | Path | Fields used | Stored as | Notes |
+ |-----------|------|-------------|-----------|-------|
+-| Accounts, plans, trials, sync health, tokens | `users/{userId}` (top-level, shared with Cyber) | `localId` (number, marks a PMS user), `tier`, `storage`, `isTrial`, `trialStartedAt`, `subscriptionExpiry`, `lastPaymentDate`, `lastSyncTime`, `messageTokens`, `createdAt` | Timestamps for the five time fields; `createdAt` is an ISO string | **Never selected: `passwordHash`, `email`, `phone`, `name`.** The cloud user document does contain the password hash, which is a security issue to fix at source |
++| Accounts, plans, trials, sync health, tokens | `users/{userId}` (top-level, shared with Cyber) | `localId` (number, marks a PMS user), `tier`, `storage`, `isTrial`, `trialStartedAt`, `subscriptionExpiry`, `lastPaymentDate`, `lastSyncTime`, `tokens`, `createdAt` | Timestamps for the five time fields; `createdAt` is an ISO string | **Never selected: `passwordHash`, `email`, `phone`, `name`.** The cloud user document does contain the password hash, which is a security issue to fix at source |
+ | Properties | `users/{u}/properties/{id}` | `createdAt` | ISO string | Group `properties`; fallback parent `users` |
+ | Units, occupancy | `users/{u}/properties/{p}/units/{id}` | `isOccupied` | boolean | Group `units` (nested two levels): needs the group index, no fallback |
+ | Tenants | `users/{u}/tenants/{id}` | `createdAt`, `isActive`, `userId` | ISO string, boolean | Group `tenants`. A top-level `tenants` collection also exists (Cyber); rows outside `users/{u}/tenants` are ignored |
+ | Invoices, receivables, collection rate | `users/{u}/invoices/{id}` | `createdAt`, `userId`, `totalAmount`, `amountPaid`, `isPaid`, `dueDate`, `billingMonth` (`YYYY-MM`) | ISO string; amounts decimal KES | Group `invoices`; top-level `invoices` (Cyber) ignored by path |
+ | Payments recorded, rent collected | `users/{u}/invoices/{i}/payments/{id}` | `paymentDate`, `amount`, `userId` | string (date or ISO datetime); decimal KES | Group `payments` (nested): needs the group index. Top-level `payments` ignored by path |
+ 
+-PMS commission, subscriptions and SMS sales are PAY KPIs (`pay.*` with platform `pms`). PMS SMS **consumption** is not synced to the cloud (only the `messageTokens` balance), so there is no PMS SMS usage KPI.
++PMS commission, subscriptions and SMS sales are PAY KPIs (`pay.*` with platform `pms`). PMS SMS credits live in `users/{uid}.tokens` and every send is logged in `users/{uid}/sms-sent-log`, which the PMS SMS KPIs read.
+ 
+ ## PMS known limits
+ 
+@@ -129,3 +129,51 @@ Database: the default database. Cyber keeps **no WhatsApp message log**. `whatsa
+ | **Approximate** (works today) | `whatsapp_sessions` | `lastActive` (epoch seconds) | Count only; one document per phone at its latest activity |
+ 
+ Flagged, not collected (status `planned` in the registry): shops, sales, expenses, reports generated and failed, new shops.
++
++
++---
++
++# Changes since the first release (Nov 2026)
++
++The product repos changed a lot after the KPIs were first written. This section is what was re-read and what the KPIs now do.
++Repos read: PAY, PMS, DESK (the former CYBER repo), Chama, Register.
++
++## PAY: new money products and a new rent fee model
++
++| Charge type | Reference | Where | Revenue (company) | Notes |
++|-------------|-----------|-------|-------------------|-------|
++| Plot Yangu rent (new model) | `INV_` | `transactions/{ref}` | `platformKeptMinor` (net); revenue = `chargeMinor - netPayoutMinor`; pass-through = `agentMinor`; gateway = `paystackFeeMinor` | The tenant pays rent plus a capped fee; the landlord pays a tier-based convenience % (0.2 enterprise, 0.4 pro, 0.65 business, 0.95 otherwise); the desk agent shares the convenience. PAY now records the books on the transaction. Older payments fall back to the earlier rules |
++| Lipa Mos Mos instalment | `LMM_` | `lmm_payments` | surcharge; net = `keptMinor` | Minor units, `createdAt` epoch ms. Credited to the landlord, settled in transfers |
++| Lipa Mos Mos settlement fee | - | `lmm_settlements.chunks[]` | `feeMinor` minus `paystackCostMinor` on successful chunks | Revenue-only line |
++| Lipa Mdogo Mdogo instalment | `LMX_` | `lmmx_payments` | service fee + reserve; pass-through = `deskShareMinor`; net after Paystack fee | Tenant plan with desk agents sharing the service fee |
++| Lipa Mdogo Mdogo transfer cost | - | `lmmx_ledger` type `payout_fee` | negative (real Paystack transfer cost) | Balances the reserve collected at instalment time |
++| Lipa Mdogo Mdogo withdrawal fee | - | `lmmx_ledger` type `withdraw_service` | positive | Revenue-only line |
++| Landlord Watch transcript | `LWT_` | `platform_revenue` type `landlord_watch_transcript` | `netRevenue` | KES 99 per extra transcript |
++| Compliance report | `CRP_` | `platform_revenue` type `compliance_report` | `netRevenue` | KES 200 |
++
++"Revenue-only" lines count in GMV, fees, revenue and net revenue but not in attempts, success or the success rate, so those stay a pure view of customer checkouts.
++New revenue streams: `instalments`, `transfers`, `withdrawals`, `lookups`. New charge types are listed in `collectors/pay/facts.ts`.
++Not counted: Perks (a loyalty points ledger, no company revenue), and the desk commission split on SMS top-ups (the desk share is not recorded on the top-up record yet, so Register and Plot Yangu SMS net revenue is slightly overstated when a desk is involved).
++
++## Plot Yangu (PMS)
++
++- **SMS credits are `users.tokens`**, not `messageTokens` (the earlier KPI read the wrong field; `messageTokens` is Register's name). `pms.tokens_outstanding` is corrected.
++- **Tiers are free, low, business, solo, pro, enterprise.**
++- **SMS usage is now measurable** from `users/{uid}/sms-sent-log` (`recipientCount`, `successCount`, `failCount`, `tokensCharged`, `sentAt`). The text and phone numbers are never selected.
++- Tenants and invoices created by DESK sit in the same `users/{u}/tenants|invoices` paths and are counted with the rest.
++
++## DESK (Cyber)
++
++| KPI group | Collection | Fields |
++|-----------|------------|--------|
++| WhatsApp usage (exact) | `whatsapp_usage/{day}` | The meter is deployed in DESK; unchanged |
++| House to Rent | `houseInquiries` | `status` (sent or failed), `credits`, `ownerId`, `createdAt` Timestamp |
++| Desk network flows | `desk_events` | `paidAt` epoch ms, `type` (refund excluded from sales), `product` (chama, school, pms), `agentId`, `grossMinor`, `feeMinor`, `agentSharePct` |
++| Desk network stock | `desk_agents` (`rank`, `status`), `desk_customers` | Aggregate counts only |
++
++Desk commission is derived: `(grossMinor - feeMinor) x agentSharePct / 100`. The money itself moves inside the Paystack split.
++The platform id stays `cyber` in data; labels say DESK.
++
++## Unchanged and re-checked
++
++Chama (same collections, plan ids, `ourFee` and `paystackFee` fields) and Register (same collections) needed no change.
+diff --git a/functions/src/collectors/cyber/desk.ts b/functions/src/collectors/cyber/desk.ts
+new file mode 100644
+index 0000000..d090a84
+--- /dev/null
++++ b/functions/src/collectors/cyber/desk.ts
+@@ -0,0 +1,104 @@
++import { DocRecord, SourceReader } from "../../core/reader";
++import { Metric } from "../../core/values";
++import { num, pct, toCents } from "../../core/money";
++
++/**
++ * DESK network and House to Rent. Collections in the shared default database, all written by PAY / DESK:
++ *  - desk_events/{id}: one fact per desk-attributed payment (paidAt epoch ms, grossMinor, feeMinor, agentSharePct, product, type, agentId)
++ *  - desk_agents/{uid}: agentCode, status, rank (clerk | senior | lead | admin | internal)
++ *  - desk_customers/{entityKey}: customers attributed to a desk agent
++ *  - houseInquiries/{id}: one document per House to Rent inquiry that reached the SMS provider (createdAt Timestamp)
++ * Agent ids and owner codes are pseudonymous business identifiers and are only counted; phones, names and message text are never selected.
++ */
++export const DESK_EVENT_SELECT = ["type", "product", "agentId", "grossMinor", "feeMinor", "agentSharePct"];
++export const INQUIRY_SELECT = ["status", "credits", "ownerId"];
++export const DESK_RANKS = ["clerk", "senior", "lead", "admin", "internal"] as const;
++export const DESK_PRODUCTS = ["chama", "school", "pms"] as const;
++
++/** Commission the agent earned on an event: share % of what was left after the Paystack fee (derived; the split itself is on Paystack). */
++export function commissionCents(gross: number, fee: number, pctShare: number): number {
++  return Math.round(((gross - fee) * pctShare) / 100);
++}
++
++export interface DeskRow {
++  agentId: string | null;
++  product: string;
++  refund: boolean;
++  grossCents: number;
++  commissionCents: number;
++}
++
++export function toDeskRow(rec: DocRecord): DeskRow {
++  const d = rec.data;
++  const gross = Math.round(num(d.grossMinor) ?? 0);
++  const fee = Math.round(num(d.feeMinor) ?? 0);
++  return {
++    agentId: typeof d.agentId === "string" && d.agentId ? d.agentId : null,
++    product: typeof d.product === "string" ? d.product : "",
++    refund: d.type === "refund",
++    grossCents: gross,
++    commissionCents: commissionCents(gross, fee, num(d.agentSharePct) ?? 0),
++  };
++}
++
++/** Totals plus a per-product breakdown; refunds are counted separately and excluded from gross and commission. */
++export function deskMetrics(rows: DeskRow[]): { total: Record<string, Metric>; byProduct: Record<string, Record<string, Metric>> } {
++  const sales = rows.filter((r) => !r.refund);
++  const sum = (rs: DeskRow[], pick: (r: DeskRow) => number) => rs.reduce((t, r) => t + pick(r), 0);
++  const metrics = (rs: DeskRow[]): Record<string, Metric> => ({
++    "cyber.desk_events": { value: rs.length },
++    "cyber.desk_gross": { value: sum(rs, (r) => r.grossCents) },
++    "cyber.desk_commission": { value: sum(rs, (r) => r.commissionCents) },
++  });
++  const byProduct: Record<string, Record<string, Metric>> = {};
++  for (const product of DESK_PRODUCTS) byProduct[product] = metrics(sales.filter((r) => r.product === product));
++  const refunds = rows.filter((r) => r.refund);
++  return {
++    total: { ...metrics(sales), "cyber.desk_refunds": { value: refunds.length }, "cyber.desk_refunded_gross": { value: sum(refunds, (r) => r.grossCents) } },
++    byProduct,
++  };
++}
++
++export function activeAgents(rows: DeskRow[]): Set<string> {
++  const out = new Set<string>();
++  for (const r of rows) if (!r.refund && r.agentId) out.add(r.agentId);
++  return out;
++}
++
++export function inquiryMetrics(docs: DocRecord[]): { metrics: Record<string, Metric>; managers: number } {
++  let sent = 0;
++  let failed = 0;
++  let credits = 0;
++  const owners = new Set<string>();
++  for (const d of docs) {
++    const status = typeof d.data.status === "string" ? d.data.status : "";
++    if (status === "sent") {
++      sent++;
++      credits += num(d.data.credits) ?? 0;
++      if (typeof d.data.ownerId === "string" && d.data.ownerId) owners.add(d.data.ownerId);
++    } else if (status === "failed") failed++;
++  }
++  return {
++    metrics: {
++      "cyber.house_inquiries_sent": { value: sent },
++      "cyber.house_inquiries_failed": { value: failed },
++      "cyber.house_inquiry_credits": { value: credits },
++      "cyber.house_inquiry_success_rate": { value: pct(sent, sent + failed), numerator: sent, denominator: sent + failed },
++    },
++    managers: owners.size,
++  };
++}
++
++/** Stock counts for the desk network (aggregates only; no documents read). */
++export async function deskStock(reader: SourceReader): Promise<{ byRank: Record<string, number>; total: number; active: number; customers: number }> {
++  const src = "default" as const;
++  const [ranks, total, active, customers] = await Promise.all([
++    Promise.all(DESK_RANKS.map((r) => reader.count({ source: src, collection: "desk_agents", equals: { field: "rank", value: r } }))),
++    reader.count({ source: src, collection: "desk_agents" }),
++    reader.count({ source: src, collection: "desk_agents", equals: { field: "status", value: "active" } }),
++    reader.count({ source: src, collection: "desk_customers" }),
++  ]);
++  return { byRank: Object.fromEntries(DESK_RANKS.map((r, i) => [r, ranks[i]])), total, active, customers };
++}
++
++export { toCents };
+diff --git a/functions/src/collectors/cyber/index.ts b/functions/src/collectors/cyber/index.ts
+index ba3c0d9..1a211f0 100644
+--- a/functions/src/collectors/cyber/index.ts
++++ b/functions/src/collectors/cyber/index.ts
+@@ -3,6 +3,7 @@ import { dailyPeriod, eachDay, nairobiDay, periodFor } from "../../core/period";
+ import { SourceReader } from "../../core/reader";
+ import { emitMetrics, makeValue, Metric } from "../../core/values";
+ import { num, pct } from "../../core/money";
++import { activeAgents, DESK_EVENT_SELECT, deskMetrics, deskStock, INQUIRY_SELECT, inquiryMetrics, toDeskRow } from "./desk";
+ 
+ const SRC = "default" as const;
+ const USAGE_SELECT = ["inbound", "outbound", "outboundFailed", "sessionsStarted", "users"];
+@@ -50,6 +51,19 @@ export function usageMetrics(u: UsageDoc): Record<string, Metric> {
+ 
+ export function createCyberCollector(reader: SourceReader): Collector {
+   const memo = new Map<string, Promise<Set<string> | null>>();
++  const agentMemo = new Map<string, Promise<Set<string>>>();
++
++  /** Distinct desk agents with a sale in a week or month (not derivable from daily counts). */
++  function agentsFor(period: Period): Promise<Set<string>> {
++    const key = `${period.grain}|${period.start}`;
++    const hit = agentMemo.get(key);
++    if (hit) return hit;
++    const p = reader
++      .queryRange({ source: SRC, collection: "desk_events", timeField: "paidAt", timeType: "epochMs", startMs: period.startMs, endMs: period.endMs, select: ["type", "agentId"] })
++      .then((docs) => activeAgents(docs.map(toDeskRow)));
++    agentMemo.set(key, p);
++    return p;
++  }
+ 
+   /** Union of the meter's hashed users over a week or month; null when no daily document exists in the period. */
+   function usersFor(period: Period): Promise<Set<string> | null> {
+@@ -74,12 +88,20 @@ export function createCyberCollector(reader: SourceReader): Collector {
+       const { period, now, runId } = ctx;
+       const base = { platform: "cyber" as const, grain: "daily" as const, period, now, runId };
+ 
++      const [deskDocs, inquiryDocs] = await Promise.all([
++        reader.queryRange({ source: SRC, collection: "desk_events", timeField: "paidAt", timeType: "epochMs", startMs: period.startMs, endMs: period.endMs, select: DESK_EVENT_SELECT }),
++        reader.queryRange({ source: SRC, collection: "houseInquiries", timeField: "createdAt", timeType: "timestamp", startMs: period.startMs, endMs: period.endMs, select: INQUIRY_SELECT }),
++      ]);
+       const [usageDocs, seen] = await Promise.all([
+         reader.getDocs(SRC, [`whatsapp_usage/${period.start}`], USAGE_SELECT),
+         reader.count({ source: SRC, collection: "whatsapp_sessions", time: { field: "lastActive", type: "epochSeconds", startMs: period.startMs, endMs: period.endMs } }),
+       ]);
+ 
+-      const out: KpiValue[] = emitMetrics({ "cyber.wa_users_seen": { value: seen } }, base);
++      const desk = deskMetrics(deskDocs.map(toDeskRow));
++      const inquiries = inquiryMetrics(inquiryDocs);
++      const out: KpiValue[] = emitMetrics({ "cyber.wa_users_seen": { value: seen }, ...desk.total, ...inquiries.metrics, "cyber.house_inquiry_managers": { value: inquiries.managers } }, base);
++      for (const [product, m] of Object.entries(desk.byProduct)) out.push(...emitMetrics(m, { ...base, dimensions: { product } }));
++      out.push(makeValue("cyber.desk_agents_active", { value: activeAgents(deskDocs.map(toDeskRow)).size }, base));
+ 
+       if (usageDocs.length > 0) {
+         const usage = toUsage(usageDocs[0].data);
+@@ -89,6 +111,7 @@ export function createCyberCollector(reader: SourceReader): Collector {
+ 
+       for (const grain of ["weekly", "monthly"] as Grain[]) {
+         const wide = periodFor(grain, period.start);
++        out.push(makeValue("cyber.desk_agents_active", { value: (await agentsFor(wide)).size }, { platform: "cyber", grain, period: wide, now, runId }));
+         const set = await usersFor(wide);
+         if (set) out.push(makeValue("cyber.wa_users_active", { value: set.size }, { platform: "cyber", grain, period: wide, now, runId }));
+       }
+@@ -100,6 +123,13 @@ export function createCyberCollector(reader: SourceReader): Collector {
+ /** Stock snapshot: phones with a session document right now (approximate audience size). */
+ export async function snapshotCyber(reader: SourceReader, now: number, runId: string): Promise<KpiValue[]> {
+   const period = dailyPeriod(nairobiDay(now));
+-  const known = await reader.count({ source: SRC, collection: "whatsapp_sessions" });
+-  return [makeValue("cyber.wa_known_users", { value: known }, { platform: "cyber", grain: "daily", period, now, runId, complete: false })];
++  const [known, stock] = await Promise.all([reader.count({ source: SRC, collection: "whatsapp_sessions" }), deskStock(reader)]);
++  const base = { platform: "cyber" as const, grain: "daily" as const, period, now, runId, complete: false };
++  return [
++    makeValue("cyber.wa_known_users", { value: known }, base),
++    makeValue("cyber.desk_agents_total", { value: stock.total }, base),
++    makeValue("cyber.desk_agents_active_total", { value: stock.active }, base),
++    makeValue("cyber.desk_customers_total", { value: stock.customers }, base),
++    ...Object.entries(stock.byRank).map(([rank, n]) => makeValue("cyber.desk_agents_by_rank", { value: n }, { ...base, dimensions: { rank } })),
++  ];
+ }
+diff --git a/functions/src/collectors/pay/adapters/index.ts b/functions/src/collectors/pay/adapters/index.ts
+index 75e55a0..620d3ff 100644
+--- a/functions/src/collectors/pay/adapters/index.ts
++++ b/functions/src/collectors/pay/adapters/index.ts
+@@ -4,6 +4,8 @@ import { reportChargeAdapter } from "./reports";
+ import { cyberServiceAdapter } from "./cyber";
+ import { pmsSubscriptionAdapter } from "./subscription";
+ import { pmsRentAdapter } from "./rent";
++import { lmmInstalmentAdapter, lmxInstalmentAdapter, lmmSettlementAdapter, lmxTransfersAdapter, lmxWithdrawalsAdapter } from "./instalments";
++import { landlordWatchAdapter, complianceReportAdapter } from "./revenueRows";
+ import {
+   chamaMemberPaymentAdapter,
+   chamaSmsAdapter,
+@@ -17,7 +19,8 @@ import {
+  * register it here and add its entries to facts.ts (stream + platform maps).
+  *
+  * Deliberately NOT included (no company revenue is recorded for them yet):
+- *   SHOP_ (shop customer charges) and MOV_ (movie subscriptions).
++ *   SHOP_ (shop customer charges), MOV_ (movie subscriptions), Perks (a loyalty points ledger, no company revenue),
++ *   and desk SMS commission splits on SMS top-ups (the desk share is not recorded on the top-up record yet).
+  */
+ export const ALL_ADAPTERS: PayAdapter[] = [
+   pmsRentAdapter,
+@@ -31,4 +34,11 @@ export const ALL_ADAPTERS: PayAdapter[] = [
+   chamaPlanAdapter,
+   chamaReportCreditAdapter,
+   chamaReportAlacarteAdapter,
++  lmmInstalmentAdapter,
++  lmxInstalmentAdapter,
++  lmmSettlementAdapter,
++  lmxTransfersAdapter,
++  lmxWithdrawalsAdapter,
++  landlordWatchAdapter,
++  complianceReportAdapter,
+ ];
+diff --git a/functions/src/collectors/pay/adapters/instalments.ts b/functions/src/collectors/pay/adapters/instalments.ts
+new file mode 100644
+index 0000000..abf558c
+--- /dev/null
++++ b/functions/src/collectors/pay/adapters/instalments.ts
+@@ -0,0 +1,155 @@
++import { PayAdapter } from "./types";
++import { PaymentFact, STREAM_BY_CHARGE_TYPE, get, statusOf } from "../facts";
++import { num } from "../../../core/money";
++import { toMillis } from "../../../core/timestamps";
++import { DocRecord } from "../reader";
++
++/**
++ * Lipa Mos Mos (LMM_) and Lipa Mdogo Mdogo (LMX_): tenants pay rent in small instalments, PAY credits the landlord and
++ * settles by Paystack transfer. Everything below is stored in MINOR UNITS (cents) with epoch-millisecond timestamps.
++ */
++const minor = (v: unknown): number | null => {
++  const n = num(v);
++  return n === null ? null : Math.round(n);
++};
++
++function customer(prefix: string, v: unknown): string | null {
++  return typeof v === "string" && v ? `${prefix}${v}` : null;
++}
++
++/** LMM_ instalment: the tenant pays credit + a surcharge. The company keeps the surcharge less the Paystack fee (keptMinor). */
++export const lmmInstalmentAdapter: PayAdapter = {
++  id: "lmm_instalment",
++  platform: "pms",
++  async load(reader, w) {
++    const docs = await reader.queryRange({
++      source: "default", collection: "lmm_payments", timeField: "createdAt", timeType: "epochMs", startMs: w.startMs, endMs: w.endMs,
++      select: ["status", "chargeMinor", "creditMinor", "surchargeMinor", "paystackFeeMinor", "keptMinor", "createdAt", "creditedAt", "agentId", "tenantId"],
++    });
++    return docs.map((rec: DocRecord): PaymentFact | null => {
++      const d = rec.data;
++      const createdAtMs = toMillis(d.createdAt);
++      if (createdAtMs === null) return null;
++      const status = statusOf(d.status);
++      const ok = status === "success";
++      const charge = minor(d.chargeMinor) ?? 0;
++      const surcharge = minor(d.surchargeMinor) ?? 0;
++      const fee = minor(d.paystackFeeMinor);
++      const kept = minor(d.keptMinor);
++      return {
++        reference: rec.id, chargeType: "lmm_instalment", platform: "pms", stream: STREAM_BY_CHARGE_TYPE.lmm_instalment, status, createdAtMs,
++        settledAtMs: status === "pending" ? null : toMillis(d.creditedAt),
++        gmvCents: charge, gatewayFeeCents: ok ? fee : null,
++        platformRevenueCents: ok ? surcharge : 0, passThroughCents: 0,
++        netRevenueCents: ok ? (kept ?? surcharge - (fee ?? 0)) : 0,
++        basis: kept !== null ? "recorded" : "gross_fee_unknown",
++        customerRef: customer("pms:user:", d.agentId),
++      };
++    }).filter((f): f is PaymentFact => f !== null);
++  },
++};
++
++/**
++ * LMX_ instalment: the tenant pays credit + reserve (transfer-cost cover) + a tiered service fee. The desk agent keeps a share
++ * of the service fee. Revenue = service fee + reserve; pass-through = desk share; net = revenue - desk share - Paystack fee.
++ * The real transfer cost is booked later by the lmx_transfers adapter, so the reserve is not double counted.
++ */
++export const lmxInstalmentAdapter: PayAdapter = {
++  id: "lmx_instalment",
++  platform: "pms",
++  async load(reader, w) {
++    const docs = await reader.queryRange({
++      source: "default", collection: "lmmx_payments", timeField: "createdAt", timeType: "epochMs", startMs: w.startMs, endMs: w.endMs,
++      select: ["status", "chargeMinor", "reserveMinor", "serviceMinor", "deskShareMinor", "paystackFeeMinor", "createdAt", "creditedAt", "tenantId"],
++    });
++    return docs.map((rec: DocRecord): PaymentFact | null => {
++      const d = rec.data;
++      const createdAtMs = toMillis(d.createdAt);
++      if (createdAtMs === null) return null;
++      const status = statusOf(d.status);
++      const ok = status === "success";
++      const service = minor(d.serviceMinor) ?? 0;
++      const reserve = minor(d.reserveMinor) ?? 0;
++      const desk = minor(d.deskShareMinor) ?? 0;
++      const fee = minor(d.paystackFeeMinor);
++      return {
++        reference: rec.id, chargeType: "lmx_instalment", platform: "pms", stream: STREAM_BY_CHARGE_TYPE.lmx_instalment, status, createdAtMs,
++        settledAtMs: status === "pending" ? null : toMillis(d.creditedAt),
++        gmvCents: minor(d.chargeMinor) ?? 0, gatewayFeeCents: ok ? fee : null,
++        platformRevenueCents: ok ? service + reserve : 0, passThroughCents: ok ? desk : 0,
++        netRevenueCents: ok ? service + reserve - desk - (fee ?? 0) : 0,
++        basis: fee !== null ? "recorded" : "gross_fee_unknown",
++        customerRef: customer("pms:tenant:", d.tenantId),
++      };
++    }).filter((f): f is PaymentFact => f !== null);
++  },
++};
++
++/**
++ * LMM landlord settlements (`lmm_settlements`, transfers in chunks). The landlord-borne transfer fee is revenue; the Paystack
++ * transfer cost is the gateway cost. Only successful chunks count, and only as revenue lines (the money moved is the landlord's,
++ * already counted in the instalment GMV).
++ */
++export const lmmSettlementAdapter: PayAdapter = {
++  id: "lmm_settlement",
++  platform: "pms",
++  async load(reader, w) {
++    const docs = await reader.queryRange({
++      source: "default", collection: "lmm_settlements", timeField: "createdAt", timeType: "epochMs", startMs: w.startMs, endMs: w.endMs,
++      select: ["chunks", "agentId", "createdAt"],
++    });
++    const facts: PaymentFact[] = [];
++    for (const rec of docs) {
++      const createdAtMs = toMillis(rec.data.createdAt) ?? w.startMs;
++      const chunks = Array.isArray(rec.data.chunks) ? rec.data.chunks : [];
++      let fee = 0;
++      let cost = 0;
++      for (const c of chunks) {
++        if (!c || typeof c !== "object") continue;
++        const ch = c as Record<string, unknown>;
++        if (statusOf(ch.status) !== "success") continue;
++        fee += minor(ch.feeMinor) ?? 0;
++        cost += minor(ch.paystackCostMinor) ?? 0;
++      }
++      if (fee === 0 && cost === 0) continue;
++      facts.push({
++        reference: rec.id, chargeType: "lmm_settlement", platform: "pms", stream: STREAM_BY_CHARGE_TYPE.lmm_settlement, status: "success",
++        createdAtMs, settledAtMs: null,
++        gmvCents: 0, gatewayFeeCents: cost, platformRevenueCents: fee, passThroughCents: 0, netRevenueCents: fee - cost,
++        basis: "recorded", customerRef: customer("pms:user:", rec.data.agentId), revenueOnly: true,
++      });
++    }
++    return facts;
++  },
++};
++
++/**
++ * LMX ledger lines that are not tied to a checkout: `payout_fee` (the real Paystack transfer cost, negative) and
++ * `withdraw_service` (the tenant withdrawal service fee, positive). Read from `lmmx_ledger`, written by PAY at the time.
++ */
++async function ledgerFacts(
++  reader: Parameters<PayAdapter["load"]>[0], w: { startMs: number; endMs: number }, type: "payout_fee" | "withdraw_service"
++): Promise<PaymentFact[]> {
++  const docs = await reader.queryRange({
++    source: "default", collection: "lmmx_ledger", timeField: "createdAt", timeType: "epochMs", startMs: w.startMs, endMs: w.endMs,
++    select: ["type", "amountMinor", "tenantId", "createdAt"],
++  });
++  const facts: PaymentFact[] = [];
++  for (const rec of docs) {
++    if (get(rec.data, "type") !== type) continue;
++    const createdAtMs = toMillis(rec.data.createdAt);
++    if (createdAtMs === null) continue;
++    const amount = minor(rec.data.amountMinor) ?? 0;
++    const isCost = type === "payout_fee";
++    facts.push({
++      reference: rec.id, chargeType: isCost ? "lmx_transfers" : "lmx_withdrawals", platform: "pms",
++      stream: isCost ? STREAM_BY_CHARGE_TYPE.lmx_transfers : STREAM_BY_CHARGE_TYPE.lmx_withdrawals, status: "success", createdAtMs, settledAtMs: null,
++      gmvCents: 0, gatewayFeeCents: isCost ? amount : null, platformRevenueCents: isCost ? 0 : amount, passThroughCents: 0,
++      netRevenueCents: isCost ? -amount : amount, basis: "ledger", customerRef: customer("pms:tenant:", rec.data.tenantId), revenueOnly: true,
++    });
++  }
++  return facts;
++}
++
++export const lmxTransfersAdapter: PayAdapter = { id: "lmx_transfers", platform: "pms", load: (r, w) => ledgerFacts(r, w, "payout_fee") };
++export const lmxWithdrawalsAdapter: PayAdapter = { id: "lmx_withdrawals", platform: "pms", load: (r, w) => ledgerFacts(r, w, "withdraw_service") };
+diff --git a/functions/src/collectors/pay/adapters/rent.ts b/functions/src/collectors/pay/adapters/rent.ts
+index cdbbe3e..2b9fd33 100644
+--- a/functions/src/collectors/pay/adapters/rent.ts
++++ b/functions/src/collectors/pay/adapters/rent.ts
+@@ -10,7 +10,8 @@ import { firstMillis, percentOf, subunits } from "./common";
+  * manager's money, NOT company revenue: it is GMV. The company's cut is taken
+  * by the Paystack split at the manager's tier commission rate.
+  *
+- * PAY writes no revenue record for these payments, so the cut is resolved as:
++ * Newer charges record the books on the transaction (platformKeptMinor and friends) and are used as recorded.
++ * Older charges have no revenue record, so the cut is resolved as:
+  *   1. split_actual  - Paystack's recorded split share for the platform account
+  *                      (`paystackResponse.fees_split.integration`), when present;
+  *   2. rate_recorded - gross x the commission rate stored in paymentAccounts/{userId} at account setup;
+@@ -39,6 +40,12 @@ export const pmsRentAdapter: PayAdapter = {
+         "paystackResponse.amount",
+         "paystackResponse.fees",
+         "paystackResponse.fees_split.integration",
++        // Rent charges made under the convenience-fee model record the books on the document itself.
++        "chargeMinor",
++        "netPayoutMinor",
++        "agentMinor",
++        "paystackFeeMinor",
++        "platformKeptMinor",
+       ],
+     });
+ 
+@@ -50,6 +57,7 @@ export const pmsRentAdapter: PayAdapter = {
+     const needTier = new Set<string>();
+     for (const r of rent) {
+       const success = statusOf(r.data.status) === "success";
++      if (subunits(r.data.platformKeptMinor) !== null) continue; // books recorded on the document: no lookups needed
+       const split = subunits(get(r.data, "paystackResponse.fees_split.integration"));
+       const userId = r.data.userId;
+       if (success && (split === null || split <= 0) && typeof userId === "string" && userId) needTier.add(userId);
+@@ -86,6 +94,24 @@ export const pmsRentAdapter: PayAdapter = {
+       const amountKes = num(d.amount);
+       const gross = rawGross ?? (amountKes !== null ? toCents(amountKes) : 0);
+ 
++      // Current model (settled after PAY started recording the books): charge = rent + tenant fee; the landlord receives
++      // netPayoutMinor, the desk agent agentMinor, Paystack its fee, and PAY recorded what it kept (platformKeptMinor).
++      const recCharge = subunits(d.chargeMinor);
++      const recNet = subunits(d.netPayoutMinor);
++      const recKept = subunits(d.platformKeptMinor);
++      if (success && recCharge !== null && recNet !== null && recKept !== null) {
++        const agent = subunits(d.agentMinor) ?? 0;
++        const recFee = subunits(d.paystackFeeMinor) ?? rawFee ?? 0;
++        facts.push({
++          reference: rec.id, chargeType: "pms_rent", platform: "pms", stream: STREAM_BY_CHARGE_TYPE.pms_rent, status,
++          createdAtMs, settledAtMs: firstMillis(d, "completedAt", "failedAt"),
++          gmvCents: recCharge, gatewayFeeCents: recFee,
++          platformRevenueCents: Math.max(0, recCharge - recNet), passThroughCents: agent, netRevenueCents: recKept,
++          basis: "recorded", customerRef: typeof d.userId === "string" && d.userId ? `pms:user:${d.userId}` : null,
++        });
++        continue;
++      }
++
+       let cut = 0;
+       let basis: PaymentFact["basis"] = "split_actual";
+       if (success) {
+diff --git a/functions/src/collectors/pay/adapters/revenueRows.ts b/functions/src/collectors/pay/adapters/revenueRows.ts
+new file mode 100644
+index 0000000..ea568d3
+--- /dev/null
++++ b/functions/src/collectors/pay/adapters/revenueRows.ts
+@@ -0,0 +1,42 @@
++import { PayAdapter } from "./types";
++import { ChargeType, PaymentFact, STREAM_BY_CHARGE_TYPE, PLATFORM_BY_CHARGE_TYPE } from "../facts";
++import { num, toCents } from "../../../core/money";
++import { toMillis } from "../../../core/timestamps";
++
++/**
++ * Products that PAY books straight into `platform_revenue` when the payment succeeds (no separate attempt record is
++ * read here), so they enter as revenue-only lines: GMV, fees and revenue, but not attempts or success rate.
++ *   landlord_watch_transcript : Landlord Watch extra transcripts (KES 99), type "landlord_watch_transcript"
++ *   compliance_report         : compliance reports (KES 200), type "compliance_report"
++ * `platform_revenue` holds decimal KES: grossAmount, paystackFees, netRevenue.
++ */
++function adapterFor(id: ChargeType, revenueType: string): PayAdapter {
++  return {
++    id,
++    platform: PLATFORM_BY_CHARGE_TYPE[id],
++    async load(reader, w) {
++      const docs = await reader.queryRange({
++        source: "default", collection: "platform_revenue", timeField: "createdAt", timeType: "timestamp", startMs: w.startMs, endMs: w.endMs,
++        select: ["type", "grossAmount", "paystackFees", "netRevenue", "createdAt"],
++      });
++      const facts: PaymentFact[] = [];
++      for (const rec of docs) {
++        if (rec.data.type !== revenueType) continue;
++        const createdAtMs = toMillis(rec.data.createdAt);
++        if (createdAtMs === null) continue;
++        const gross = toCents(num(rec.data.grossAmount) ?? 0);
++        const fee = toCents(num(rec.data.paystackFees) ?? 0);
++        const net = rec.data.netRevenue !== undefined ? toCents(num(rec.data.netRevenue) ?? 0) : gross - fee;
++        facts.push({
++          reference: rec.id, chargeType: id, platform: PLATFORM_BY_CHARGE_TYPE[id], stream: STREAM_BY_CHARGE_TYPE[id], status: "success",
++          createdAtMs, settledAtMs: createdAtMs, gmvCents: gross, gatewayFeeCents: fee, platformRevenueCents: gross, passThroughCents: 0,
++          netRevenueCents: net, basis: "recorded", customerRef: null, revenueOnly: true,
++        });
++      }
++      return facts;
++    },
++  };
++}
++
++export const landlordWatchAdapter = adapterFor("landlord_watch_transcript", "landlord_watch_transcript");
++export const complianceReportAdapter = adapterFor("compliance_report", "compliance_report");
+diff --git a/functions/src/collectors/pay/aggregate.ts b/functions/src/collectors/pay/aggregate.ts
+index 77f6e85..7d0a89d 100644
+--- a/functions/src/collectors/pay/aggregate.ts
++++ b/functions/src/collectors/pay/aggregate.ts
+@@ -27,14 +27,16 @@ function sum(facts: PaymentFact[], pick: (f: PaymentFact) => number): number {
+ /** All PAY KPIs for one group of facts. */
+ export function metricsFor(facts: PaymentFact[], now: number, stuckMs: number): Record<string, Metric> {
+   const ok = facts.filter((f) => f.status === "success");
+-  const attempts = facts.length;
+-  const success = ok.length;
++  // Customer checkouts only: revenue-only lines (settlement fees, ledger rows) never inflate attempts or the success rate.
++  const checkouts = facts.filter((f) => !f.revenueOnly);
++  const attempts = checkouts.length;
++  const success = checkouts.filter((f) => f.status === "success").length;
+   return {
+     "pay.attempts": { value: attempts },
+     "pay.success": { value: success },
+-    "pay.failed": { value: facts.filter((f) => f.status === "failed").length },
++    "pay.failed": { value: checkouts.filter((f) => f.status === "failed").length },
+     "pay.stuck_pending": {
+-      value: facts.filter((f) => f.status === "pending" && now - f.createdAtMs > stuckMs).length,
++      value: checkouts.filter((f) => f.status === "pending" && now - f.createdAtMs > stuckMs).length,
+     },
+     "pay.success_rate": { value: pct(success, attempts), numerator: success, denominator: attempts },
+     "pay.gmv": { value: sum(ok, (f) => f.gmvCents) },
+diff --git a/functions/src/collectors/pay/facts.ts b/functions/src/collectors/pay/facts.ts
+index d8f5072..cf67f72 100644
+--- a/functions/src/collectors/pay/facts.ts
++++ b/functions/src/collectors/pay/facts.ts
+@@ -16,10 +16,22 @@ export type ChargeType =
+   | "chama_sms"
+   | "chama_plan"
+   | "chama_report_credit"
+-  | "chama_report_alacarte";
++  | "chama_report_alacarte"
++  | "lmm_instalment"
++  | "lmm_settlement"
++  | "lmx_instalment"
++  | "lmx_transfers"
++  | "lmx_withdrawals"
++  | "landlord_watch_transcript"
++  | "compliance_report";
+ 
+ /** How the company earns from a charge type. */
+-export type RevenueStream = "commission" | "sms" | "subscription" | "reports" | "markup";
++export type RevenueStream =
++  | "commission" | "sms" | "subscription" | "reports" | "markup"
++  | "instalments"   // Lipa Mos Mos / Lipa Mdogo Mdogo service fees and surcharges
++  | "transfers"     // landlord settlement fees and transfer-cost cover, net of the real transfer cost
++  | "withdrawals"   // tenant withdrawal service fee
++  | "lookups";      // Landlord Watch transcripts
+ 
+ /**
+  * How trustworthy the revenue figure is:
+@@ -28,8 +40,9 @@ export type RevenueStream = "commission" | "sms" | "subscription" | "reports" |
+  *  rate_recorded     - gross x the commission rate PAY stored when the Paystack account was set up (the rate the split applied)
+  *  rate_estimate     - computed from the tier commission % because no recorded split or rate exists
+  *  gross_fee_unknown - amount sold is exact, but the gateway fee was not recorded
++ *  ledger            - taken from a ledger row PAY wrote at the time (Lipa Mdogo Mdogo)
+  */
+-export type RevenueBasis = "recorded" | "split_actual" | "rate_recorded" | "rate_estimate" | "gross_fee_unknown";
++export type RevenueBasis = "recorded" | "split_actual" | "rate_recorded" | "rate_estimate" | "gross_fee_unknown" | "ledger";
+ 
+ export type PayStatus = "success" | "failed" | "pending";
+ 
+@@ -45,6 +58,13 @@ export const STREAM_BY_CHARGE_TYPE: Record<ChargeType, RevenueStream> = {
+   chama_report_credit: "reports",
+   chama_report_alacarte: "reports",
+   chama_member_payment: "markup",
++  lmm_instalment: "instalments",
++  lmx_instalment: "instalments",
++  lmm_settlement: "transfers",
++  lmx_transfers: "transfers",
++  lmx_withdrawals: "withdrawals",
++  landlord_watch_transcript: "lookups",
++  compliance_report: "reports",
+ };
+ 
+ export const PLATFORM_BY_CHARGE_TYPE: Record<ChargeType, PlatformId> = {
+@@ -59,6 +79,13 @@ export const PLATFORM_BY_CHARGE_TYPE: Record<ChargeType, PlatformId> = {
+   chama_plan: "chama",
+   chama_report_credit: "chama",
+   chama_report_alacarte: "chama",
++  lmm_instalment: "pms",
++  lmm_settlement: "pms",
++  lmx_instalment: "pms",
++  lmx_transfers: "pms",
++  lmx_withdrawals: "pms",
++  landlord_watch_transcript: "cyber",
++  compliance_report: "pms",
+ };
+ 
+ export const PLATFORMS: Exclude<PlatformId, "all">[] = ["pms", "register", "chama", "cyber"];
+@@ -84,13 +111,19 @@ export interface PaymentFact {
+   basis: RevenueBasis;
+   /** Platform-scoped id for Phase 3/6 (Customer 360). Never a phone number. */
+   customerRef: string | null;
++  /**
++   * True for money lines that are not customer payment attempts (settlement fees, ledger adjustments, revenue-only
++   * records). They count in GMV, fees, revenue and net revenue but NOT in attempts, success, failed, stuck or the
++   * success rate, so those stay a pure view of customer checkouts.
++   */
++  revenueOnly?: boolean;
+ }
+ 
+ /** Maps every status spelling used across the source records to one vocabulary. */
+ export function statusOf(raw: unknown): PayStatus {
+   const s = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+-  if (s === "success" || s === "successful" || s === "paid" || s === "completed") return "success";
+-  if (["failed", "payment_failed", "abandoned", "reversed", "cancelled", "canceled", "rejected"].includes(s)) return "failed";
++  if (s === "success" || s === "successful" || s === "paid" || s === "completed" || s === "credited") return "success";
++  if (["failed", "payment_failed", "abandoned", "reversed", "cancelled", "canceled", "rejected", "rejected_amount", "expired"].includes(s)) return "failed";
+   return "pending";
+ }
+ 
+diff --git a/functions/src/collectors/pms/index.ts b/functions/src/collectors/pms/index.ts
+index 8b23b5f..24db262 100644
+--- a/functions/src/collectors/pms/index.ts
++++ b/functions/src/collectors/pms/index.ts
+@@ -4,6 +4,7 @@ import { SourceReader } from "../../core/reader";
+ import { emitMetrics, makeValue } from "../../core/values";
+ import { billingMetrics, distinctUsers, INVOICE_SELECT, PAYMENT_SELECT, userIdOf } from "./billing";
+ import { pmsUsersIn } from "./users";
++import { SMS_LOG_SELECT, smsLogMetrics } from "./smsLog";
+ 
+ const SRC = "default" as const;
+ const GROUP = { group: true, groupParent: "users" } as const;
+@@ -41,13 +42,14 @@ export function createPmsCollector(reader: SourceReader): Collector {
+       const w = { startMs: period.startMs, endMs: period.endMs };
+       const base = { platform: "pms" as const, grain: "daily" as const, period, now, runId };
+ 
+-      const [newUsers, newTrials, invoiceDocs, paymentDocs, tenantDocs, propertyDocs] = await Promise.all([
++      const [newUsers, newTrials, invoiceDocs, paymentDocs, tenantDocs, propertyDocs, smsDocs] = await Promise.all([
+         pmsUsersIn(reader, "createdAt", "isoString", w.startMs, w.endMs),
+         pmsUsersIn(reader, "trialStartedAt", "timestamp", w.startMs, w.endMs),
+         invoices(w, INVOICE_SELECT),
+         payments(w, PAYMENT_SELECT),
+         reader.queryRange({ source: SRC, collection: "tenants", ...GROUP, timeField: "createdAt", timeType: "isoString", ...w, select: [] }),
+         reader.queryRange({ source: SRC, collection: "properties", ...GROUP, timeField: "createdAt", timeType: "isoString", ...w, select: [] }),
++        reader.queryRange({ source: SRC, collection: "sms-sent-log", ...GROUP, timeField: "sentAt", timeType: "timestamp", ...w, select: SMS_LOG_SELECT }),
+       ]);
+ 
+       const newTenants = tenantDocs.filter((d) => userIdOf(d.path, "tenants")).length;
+@@ -60,6 +62,7 @@ export function createPmsCollector(reader: SourceReader): Collector {
+             "pms.users_new": { value: newUsers.length },
+             "pms.trials_started": { value: newTrials.length },
+             ...billingMetrics(invoiceDocs, paymentDocs, newTenants, newProperties),
++            ...smsLogMetrics(smsDocs),
+           },
+           base
+         ),
+diff --git a/functions/src/collectors/pms/smsLog.ts b/functions/src/collectors/pms/smsLog.ts
+new file mode 100644
+index 0000000..f957979
+--- /dev/null
++++ b/functions/src/collectors/pms/smsLog.ts
+@@ -0,0 +1,36 @@
++import { DocRecord } from "../../core/reader";
++import { Metric } from "../../core/values";
++import { num, pct } from "../../core/money";
++
++/**
++ * users/{userId}/sms-sent-log: one audit entry per bulk SMS send (written by the Plot Yangu app / WhatsApp service and by DESK for
++ * House to Rent). Message text, phone numbers and property ids are never selected. A collection-group query also matches any other
++ * collection named sms-sent-log, so rows are accepted only at users/{userId}/sms-sent-log/{id}.
++ */
++export const SMS_LOG_SELECT = ["recipientCount", "tokensCharged", "successCount", "failCount"];
++
++export function isUserSmsLog(path: string): boolean {
++  const p = path.split("/");
++  return p.length === 4 && p[0] === "users" && p[2] === "sms-sent-log" && !!p[1];
++}
++
++export function smsLogMetrics(docs: DocRecord[]): Record<string, Metric> {
++  let ok = 0;
++  let failed = 0;
++  let tokens = 0;
++  let messages = 0;
++  for (const d of docs) {
++    if (!isUserSmsLog(d.path)) continue;
++    messages++;
++    ok += num(d.data.successCount) ?? 0;
++    failed += num(d.data.failCount) ?? 0;
++    tokens += num(d.data.tokensCharged) ?? 0;
++  }
++  return {
++    "pms.sms_messages": { value: messages },
++    "pms.sms_recipients_ok": { value: ok },
++    "pms.sms_recipients_failed": { value: failed },
++    "pms.sms_tokens_charged": { value: tokens },
++    "pms.sms_success_rate": { value: pct(ok, ok + failed), numerator: ok, denominator: ok + failed },
++  };
++}
+diff --git a/functions/src/collectors/pms/users.ts b/functions/src/collectors/pms/users.ts
+index 7f66748..b2cc386 100644
+--- a/functions/src/collectors/pms/users.ts
++++ b/functions/src/collectors/pms/users.ts
+@@ -13,10 +13,10 @@ const SRC = "default" as const;
+  * (the cloud user document contains a password hash; it is not touched).
+  */
+ export const USER_SELECT = [
+-  "localId", "tier", "storage", "isTrial", "trialStartedAt", "subscriptionExpiry", "lastPaymentDate", "lastSyncTime", "messageTokens",
++  "localId", "tier", "storage", "isTrial", "trialStartedAt", "subscriptionExpiry", "lastPaymentDate", "lastSyncTime", "tokens", "messageTokens",
+ ];
+ 
+-export const KNOWN_TIERS = ["free", "low", "business", "enterprise"] as const;
++export const KNOWN_TIERS = ["free", "low", "business", "solo", "pro", "enterprise"] as const;
+ 
+ export interface PmsUser {
+   id: string;
+@@ -41,7 +41,8 @@ export function toPmsUser(rec: DocRecord): PmsUser {
+     expiry: toMillis(d.subscriptionExpiry),
+     lastPayment: toMillis(d.lastPaymentDate),
+     lastSync: toMillis(d.lastSyncTime),
+-    tokens: num(d.messageTokens) ?? 0,
++    // SMS credits live in users/{uid}.tokens (PAY credits it on a Plot Yangu top-up); messageTokens is the legacy name.
++    tokens: num(d.tokens) ?? num(d.messageTokens) ?? 0,
+   };
+ }
+ 
+diff --git a/functions/src/registry/cross.ts b/functions/src/registry/cross.ts
+index c39746c..c4816de 100644
+--- a/functions/src/registry/cross.ts
++++ b/functions/src/registry/cross.ts
+@@ -110,7 +110,7 @@ export const CROSS_DEFINITIONS = [
+     dimensions: ["stream"],
+     direction: "neutral",
+     formula:
+-      "For stream S in {commission,sms,subscription,reports,markup}: company.net_revenue{stream=S} / company.net_revenue (no dimensions) x 100. Dimension stream=S.",
++      "For stream S in {commission,sms,subscription,reports,markup,instalments,transfers,withdrawals,lookups}: company.net_revenue{stream=S} / company.net_revenue (no dimensions) x 100. Dimension stream=S.",
+     numeratorDesc: "Company net revenue of the stream (KES cents)",
+     denominatorDesc: "Company net revenue (KES cents)",
+     owner: "Sam",
+@@ -145,7 +145,7 @@ export const CROSS_DEFINITIONS = [
+     dimensions: ["platform"],
+     direction: "neutral",
+     formula:
+-      "register.sms_tokens_used (platform=register) + chama.sms_credits_used (platform=chama) at the same grain, plus a no-dimension total. Plot Yangu is excluded: its SMS consumption is not synced.",
++      "register.sms_tokens_used (platform=register) + chama.sms_credits_used (platform=chama) + pms.sms_tokens_charged (platform=pms) at the same grain, plus a no-dimension total.",
+     owner: "Sam",
+     decision: "How much SMS capacity are customers consuming, and does the provider bill need renegotiating?",
+     caveat: "Register tokens used is an estimate (deducted in the browser).",
+@@ -197,7 +197,7 @@ export const CROSS_DEFINITIONS = [
+     dimensions: [],
+     direction: "higher_is_better",
+     formula:
+-      "(pay.net_revenue{stream=sms} for platform=register + same for platform=chama) - cross.sms_cost_estimate. Emit only when cross.sms_cost_estimate exists. Plot Yangu SMS revenue is excluded because its usage is unknown.",
++      "(pay.net_revenue{stream=sms} for platform=register + same for platforms chama and pms) - cross.sms_cost_estimate. Emit only when cross.sms_cost_estimate exists.",
+     owner: "Sam",
+     decision: "Is selling SMS credits profitable, or should SMS prices change?",
+     caveat: "Needs the SMS provider cost per unit to be configured.",
+diff --git a/functions/src/registry/cyber.ts b/functions/src/registry/cyber.ts
+index dcdf913..558dd95 100644
+--- a/functions/src/registry/cyber.ts
++++ b/functions/src/registry/cyber.ts
+@@ -1,7 +1,7 @@
+ import { defineKpi } from "../core/registry";
+ 
+ /**
+- * Cyber KPIs. Scope for now: WhatsApp usage only. Cyber keeps no WhatsApp message log: `whatsapp_sessions` holds one
++ * Cyber (now DESK) KPIs: WhatsApp usage, the desk agent network and House to Rent. Cyber keeps no WhatsApp message log: `whatsapp_sessions` holds one
+  * short-lived document per phone number (30-minute timeout, overwritten on the next conversation). Two families:
+  *  - EXACT, from the usage meter in `cyber-whatsapp-meter/` (collection `whatsapp_usage`, one document per Nairobi day).
+  *    Values exist only from the day the meter is deployed; earlier days are absent, not zero.
+@@ -32,4 +32,21 @@ export const CYBER_DEFINITIONS = [
+   defineKpi({ ...COMMON, ...PLANNED, id: "cyber.expenses_recorded", name: "Expenses recorded", description: "Expenses logged through the bot.", type: "flow", unit: "count", formula: "Count of shop expenses. Not collected yet.", decision: "Depth of usage." }),
+   defineKpi({ ...COMMON, ...PLANNED, id: "cyber.reports_generated", name: "Reports generated", description: "Business reports produced.", type: "flow", unit: "count", formula: "Count of completed report jobs. Not collected yet (report charges are already in the PAY KPIs).", decision: "Feature demand." }),
+   defineKpi({ ...COMMON, ...PLANNED, id: "cyber.report_jobs_failed", name: "Report jobs failed", description: "Report requests that failed.", type: "flow", unit: "count", direction: "lower_is_better", formula: "Count of failed report jobs. Not collected yet.", decision: "Reliability of a paid feature." }),
++  // ---- House to Rent (houseInquiries, written by the DESK WhatsApp bot) ----
++  defineKpi({ ...COMMON, id: "cyber.house_inquiries_sent", name: "House inquiries sent", description: "Tenant inquiries about a vacant unit that reached the manager by SMS.", type: "flow", unit: "count", direction: "higher_is_better", formula: "Count of houseInquiries with status sent on the day.", decision: "Demand for vacant units; feeds landlord leads." }),
++  defineKpi({ ...COMMON, id: "cyber.house_inquiries_failed", name: "House inquiries failed", description: "Inquiries the SMS provider rejected.", type: "flow", unit: "count", direction: "lower_is_better", formula: "Count of houseInquiries with status failed on the day.", decision: "Provider trouble or unreachable managers." }),
++  defineKpi({ ...COMMON, id: "cyber.house_inquiry_success_rate", name: "House inquiry success rate", description: "Share of inquiries delivered to the provider.", type: "ratio", unit: "percent", direction: "higher_is_better", formula: "sent / (sent + failed) x 100.", numeratorDesc: "Inquiries sent", denominatorDesc: "Inquiries sent or failed", decision: "Reliability of the feature." }),
++  defineKpi({ ...COMMON, id: "cyber.house_inquiry_credits", name: "House inquiry credits charged", description: "SMS credits charged to managers for inquiries.", type: "flow", unit: "count", formula: "Sum of credits over inquiries with status sent.", decision: "Credit burn caused by the feature." }),
++  defineKpi({ ...COMMON, id: "cyber.house_inquiry_managers", name: "Managers receiving inquiries", description: "Distinct property owners whose vacant units were inquired about.", type: "flow", unit: "count", formula: "Distinct ownerId over sent inquiries on the day.", decision: "Breadth of supply that tenants find." }),
++  // ---- DESK agent network (desk_events, desk_agents, desk_customers) ----
++  defineKpi({ ...COMMON, id: "cyber.desk_events", dimensions: ["product"], name: "Desk-attributed payments", description: "Payments credited to a desk agent (SMS, plans, reports, rent). Refunds excluded.", type: "flow", unit: "count", direction: "higher_is_better", formula: "Count of desk_events that are not refunds. Dimension product: chama, school, pms.", decision: "Reach of the agent network by product." }),
++  defineKpi({ ...COMMON, id: "cyber.desk_gross", dimensions: ["product"], name: "Desk-attributed volume", description: "Money charged on payments attributed to desk agents. Not revenue.", type: "flow", unit: "KES_CENTS", direction: "higher_is_better", formula: "Sum of grossMinor over desk_events that are not refunds. Dimension product.", decision: "How much of the business the network drives." }),
++  defineKpi({ ...COMMON, id: "cyber.desk_commission", dimensions: ["product"], caveat: "Derived from the recorded share %; the money itself moves in the Paystack split.", name: "Desk commission earned", description: "Commission earned by desk agents on attributed payments.", type: "flow", unit: "KES_CENTS", formula: "Sum of (grossMinor - feeMinor) x agentSharePct / 100 over desk_events that are not refunds. Dimension product.", decision: "Cost of the agent channel; compare with revenue it drives." }),
++  defineKpi({ ...COMMON, id: "cyber.desk_refunds", name: "Desk refunds", description: "Desk events that reverse an earlier payment.", type: "flow", unit: "count", direction: "lower_is_better", formula: "Count of desk_events of type refund.", decision: "Quality of agent-sourced sales." }),
++  defineKpi({ ...COMMON, id: "cyber.desk_refunded_gross", name: "Desk refunded volume", description: "Value of refunded desk-attributed payments.", type: "flow", unit: "KES_CENTS", direction: "lower_is_better", formula: "Sum of grossMinor over refund desk_events.", decision: "Clawback exposure." }),
++  defineKpi({ ...COMMON, id: "cyber.desk_agents_active", grains: ["daily", "weekly", "monthly"], name: "Active desk agents", description: "Distinct agents with at least one attributed payment in the period.", type: "flow", unit: "count", direction: "higher_is_better", formula: "Distinct agentId over desk_events that are not refunds. Daily, weekly (Mon-Sun) and monthly values.", decision: "How many agents actually sell." }),
++  defineKpi({ ...COMMON, id: "cyber.desk_agents_total", name: "Desk agents (total)", description: "Agent accounts at snapshot time, any status.", type: "stock", unit: "count", formula: "Count of desk_agents at 23:55 Nairobi.", decision: "Size of the network." }),
++  defineKpi({ ...COMMON, id: "cyber.desk_agents_active_total", name: "Desk agents (active status)", description: "Agent accounts with status active.", type: "stock", unit: "count", formula: "Count of desk_agents with status active.", decision: "Usable network capacity." }),
++  defineKpi({ ...COMMON, id: "cyber.desk_agents_by_rank", dimensions: ["rank"], name: "Desk agents by rank", description: "Agent accounts per rank at snapshot time.", type: "stock", unit: "count", formula: "Count of desk_agents per rank. Dimension rank: clerk, senior, lead, admin, internal.", decision: "Shape of the hierarchy." }),
++  defineKpi({ ...COMMON, id: "cyber.desk_customers_total", name: "Desk-attributed customers", description: "Customers owned by a desk agent.", type: "stock", unit: "count", formula: "Count of desk_customers at 23:55 Nairobi.", decision: "Book of business held by the network." }),
+ ];
+diff --git a/functions/src/registry/pms.ts b/functions/src/registry/pms.ts
+index c595f36..6ba2fad 100644
+--- a/functions/src/registry/pms.ts
++++ b/functions/src/registry/pms.ts
+@@ -28,7 +28,7 @@ export const PMS_DEFINITIONS = [
+     caveat: "As of last sync; recent periods rise as devices sync.", grains: ["daily", "weekly", "monthly"], name: "Active property managers", description: "Distinct managers who issued an invoice or recorded a payment in the period. The headline adoption number.", type: "flow", unit: "count", direction: "higher_is_better", formula: "Distinct userId across invoices created and payments recorded in the period. Daily, weekly (Mon-Sun) and calendar-month values; later syncs raise recent periods.", decision: "Real adoption versus sign-ups." }),
+   // ---- accounts, plans, trials (stock) ----
+   defineKpi({ ...COMMON, id: "pms.users_total", name: "PMS accounts (total)", description: "PMS accounts in the cloud at snapshot time.", type: "stock", unit: "count", formula: "Count of user records that carry a PMS localId.", decision: "Size of the customer base." }),
+-  defineKpi({ ...COMMON, id: "pms.users_by_tier", name: "Accounts by tier", description: "PMS accounts per subscription tier.", type: "stock", unit: "count", formula: "Count of users with each tier value. Dimension: tier (free, low, business, enterprise; anything else is counted as other).", decision: "Plan mix and upgrade pressure.", dimensions: ["tier"] }),
++  defineKpi({ ...COMMON, id: "pms.users_by_tier", name: "Accounts by tier", description: "PMS accounts per subscription tier.", type: "stock", unit: "count", formula: "Count of users with each tier value. Dimension: tier (free, low, business, solo, pro, enterprise; anything else is counted as other).", decision: "Plan mix and upgrade pressure.", dimensions: ["tier"] }),
+   defineKpi({ ...COMMON, id: "pms.users_synced_7d", name: "Accounts synced in 7 days", description: "Accounts whose device synced in the last 7 days.", type: "stock", unit: "count", direction: "higher_is_better", formula: "Count of users with lastSyncTime in the 7 days before the snapshot.", decision: "Live usage of the sync feature." }),
+   defineKpi({ ...COMMON, id: "pms.paid_active", name: "Active paid accounts", description: "Paying managers with a subscription still valid.", type: "stock", unit: "count", direction: "higher_is_better", formula: "Users with storage true, not on a trial, and subscriptionExpiry in the future.", decision: "Recurring revenue base." }),
+   defineKpi({ ...COMMON, id: "pms.paid_expiring_14d", name: "Paid plans expiring in 14 days", description: "Active paid accounts whose subscription ends within 14 days.", type: "stock", unit: "count", direction: "lower_is_better", formula: "Active paid accounts with subscriptionExpiry between now and 14 days ahead.", decision: "Renewal outreach list." }),
+@@ -39,7 +39,7 @@ export const PMS_DEFINITIONS = [
+   defineKpi({ ...COMMON, id: "pms.trials_awaiting_downgrade", name: "Expired trials not yet downgraded", description: "Trials past their end date still flagged as trials (downgrade job runs weekly on Mondays).", type: "stock", unit: "count", formula: "Users with isTrial true and subscriptionExpiry in the past.", decision: "Explains apparent premium users; clears every Monday." }),
+   defineKpi({ ...COMMON, id: "pms.trial_conversion_rate", name: "Trial to paid conversion", description: "Share of accounts that ever had a trial and later paid.", type: "ratio", unit: "percent", direction: "higher_is_better", formula: "Users with trialStartedAt whose lastPaymentDate is on or after it / users with trialStartedAt x 100. All-time cohort.", numeratorDesc: "Trial accounts that later paid", denominatorDesc: "Accounts that ever had a trial", decision: "Onboarding and pricing effectiveness." }),
+   defineKpi({ ...COMMON, id: "pms.tokens_outstanding",
+-    caveat: "Balance only: SMS consumption is not synced to the cloud.", name: "Unspent SMS tokens", description: "Prepaid PMS SMS tokens held by managers. Consumption is not synced to the cloud, so only the balance is visible.", type: "stock", unit: "count", formula: "Sum of messageTokens across PMS users.", decision: "Sold-but-unused credit." }),
++     name: "Unspent SMS tokens", description: "Prepaid Plot Yangu SMS credits held by managers (users.tokens).", type: "stock", unit: "count", formula: "Sum of the tokens field across PMS users (legacy messageTokens is used when tokens is absent).", decision: "Sold-but-unused credit." }),
+   // ---- portfolio (stock) ----
+   defineKpi({ ...COMMON, id: "pms.properties_total", name: "Properties (total)", description: "Properties synced to the cloud.", type: "stock", unit: "count", formula: "Count of property records.", decision: "Managed portfolio size." }),
+   defineKpi({ ...COMMON, id: "pms.tenants_active", name: "Active tenants", description: "Tenants flagged active.", type: "stock", unit: "count", formula: "Count of tenant records with isActive true.", decision: "Managed households." }),
+@@ -54,4 +54,10 @@ export const PMS_DEFINITIONS = [
+   defineKpi({ ...COMMON, id: "pms.receivables_overdue", name: "Rent overdue", description: "Unpaid amount on invoices past due.", type: "stock", unit: "KES_CENTS", direction: "lower_is_better", formula: "Sum of (totalAmount - amountPaid) over invoices with isPaid false and dueDate before today.", decision: "Size of the arrears problem." }),
+   defineKpi({ ...COMMON, id: "pms.collection_rate",
+     caveat: "As of last sync; a billing month matures as tenants pay.", name: "Rent collection rate (billing month)", description: "Share of a billing month's invoiced rent that has been paid so far. Emitted for the current and previous billing month.", type: "ratio", unit: "percent", direction: "higher_is_better", formula: "Sum of amountPaid / sum of totalAmount x 100 over invoices with billingMonth equal to the month. Dimension: month (YYYY-MM). Matures as tenants pay.", numeratorDesc: "Amount paid on the month's invoices", denominatorDesc: "Amount invoiced for the month", decision: "Core outcome for property managers; low rates predict churn.", dimensions: ["month"] }),
++  // ---- SMS usage (from users/{uid}/sms-sent-log) ----
++  defineKpi({ ...COMMON, id: "pms.sms_messages", name: "SMS sends", description: "Bulk SMS sends from Plot Yangu accounts, including House to Rent inquiries.", type: "flow", unit: "count", direction: "higher_is_better", formula: "Count of sms-sent-log entries sent on the day.", decision: "Feature usage." }),
++  defineKpi({ ...COMMON, id: "pms.sms_recipients_ok", name: "SMS recipients reached", description: "Recipients the provider accepted.", type: "flow", unit: "count", direction: "higher_is_better", formula: "Sum of successCount over sms-sent-log entries (acceptance, not handset delivery).", decision: "Volume behind credit use." }),
++  defineKpi({ ...COMMON, id: "pms.sms_recipients_failed", name: "SMS recipients failed", description: "Recipients the provider rejected.", type: "flow", unit: "count", direction: "lower_is_better", formula: "Sum of failCount over sms-sent-log entries.", decision: "Provider or number-quality trouble." }),
++  defineKpi({ ...COMMON, id: "pms.sms_tokens_charged", name: "SMS credits used", description: "Credits charged for SMS (net of refunds on failed sends).", type: "flow", unit: "count", formula: "Sum of tokensCharged over sms-sent-log entries.", decision: "Burn rate; pair with credits sold (PAY) to predict top-ups." }),
++  defineKpi({ ...COMMON, id: "pms.sms_success_rate", name: "SMS acceptance rate", description: "Share of recipients the provider accepted.", type: "ratio", unit: "percent", direction: "higher_is_better", formula: "successCount / (successCount + failCount) x 100.", numeratorDesc: "Recipients accepted", denominatorDesc: "Recipients accepted or failed", decision: "Falling rate points at bad numbers or provider trouble." }),
+ ];
+diff --git a/functions/src/rollups/config.ts b/functions/src/rollups/config.ts
+index 65aa4bf..0da4f63 100644
+--- a/functions/src/rollups/config.ts
++++ b/functions/src/rollups/config.ts
+@@ -39,6 +39,7 @@ export const NEW_ACCOUNT_COMPONENTS: Component[] = [
+ export const SMS_USED_COMPONENTS: Component[] = [
+   { platform: "register", kpiId: "register.sms_tokens_used" },
+   { platform: "chama", kpiId: "chama.sms_credits_used" },
++  { platform: "pms", kpiId: "pms.sms_tokens_charged" },
+ ];
+ 
+ export const SMS_OUTSTANDING_COMPONENTS: Component[] = [
+@@ -50,10 +51,10 @@ export const SMS_OUTSTANDING_COMPONENTS: Component[] = [
+ /** Platforms whose pay.net_revenue feeds cross.revenue_share. */
+ export const REVENUE_PLATFORMS: ProductPlatform[] = ["pms", "register", "chama", "cyber"];
+ 
+-export const REVENUE_STREAMS = ["commission", "sms", "subscription", "reports", "markup"] as const;
++export const REVENUE_STREAMS = ["commission", "sms", "subscription", "reports", "markup", "instalments", "transfers", "withdrawals", "lookups"] as const;
+ 
+-/** Platforms whose SMS net revenue feeds cross.sms_margin (Plot Yangu excluded: usage unknown). */
+-export const SMS_MARGIN_PLATFORMS: ProductPlatform[] = ["register", "chama"];
++/** Platforms whose SMS net revenue feeds cross.sms_margin (Plot Yangu usage is now known from its SMS audit log). */
++export const SMS_MARGIN_PLATFORMS: ProductPlatform[] = ["register", "chama", "pms"];
+ 
+ /**
+  * KPIs never derived to weekly/monthly: diagnostics, and the freshness KPIs this layer writes daily only.
+diff --git a/functions/test/cyber.test.ts b/functions/test/cyber.test.ts
+index 05db85b..16f8e0c 100644
+--- a/functions/test/cyber.test.ts
++++ b/functions/test/cyber.test.ts
+@@ -26,9 +26,9 @@ describe("Cyber collector (WhatsApp usage only)", () => {
+       .add("default", "whatsapp_sessions/s2", { lastActive: sec(T_DAY + 1000), createdAt: sec(T_DAY - 50_000_000) })
+       .add("default", "whatsapp_sessions/s3", { lastActive: sec(T_DAY - 3 * 86_400_000) });
+     const vals = await createCyberCollector(r).collect({ period: dailyPeriod(DAY), runId: "t", now: NOW });
+-    expect(vals).toHaveLength(1);
+     expect(find(vals, "cyber.wa_users_seen")!.value).toBe(2);
+-    expect(vals.some((v) => v.kpiId === "cyber.wa_messages_in")).toBe(false);
++    expect(vals.some((v) => v.kpiId.startsWith("cyber.wa_") && v.kpiId !== "cyber.wa_users_seen")).toBe(false); // exact WhatsApp KPIs absent, not zero
++    expect(vals).toHaveLength(23); // 1 approx + 5 desk + 9 desk by product + 5 inquiries + 3 desk-agent grains
+   });
+ 
+   it("with the meter: exact daily, weekly and monthly values", async () => {
+diff --git a/functions/test/pms.test.ts b/functions/test/pms.test.ts
+index 50f3b88..cddcc48 100644
+--- a/functions/test/pms.test.ts
++++ b/functions/test/pms.test.ts
+@@ -45,7 +45,7 @@ describe("accounts, plans and trials", () => {
+   });
+ 
+   it("tier counts always list the four known tiers and group the rest as other", () => {
+-    expect(tierCounts(users)).toEqual({ free: 2, low: 0, business: 2, enterprise: 1, other: 1 });
++    expect(tierCounts(users)).toEqual({ free: 2, low: 0, business: 2, solo: 0, pro: 0, enterprise: 1, other: 1 });
+   });
+ });
+ 
+@@ -111,7 +111,7 @@ function seed(): MemoryPayReader {
+ describe("PMS collector", () => {
+   it("computes the daily set, ignoring Cyber's records and handling date-only payment dates", async () => {
+     const vals = await createPmsCollector(seed()).collect({ period: dailyPeriod(DAY), runId: "t", now: NOW });
+-    expect(vals).toHaveLength(11); // users_new, trials_started, 6 billing/growth, managers_active x3 grains
++    expect(vals).toHaveLength(16); // users_new, trials_started, 6 billing/growth, 5 SMS audit-log KPIs, managers_active x3 grains
+     expect(find(vals, "pms.users_new")!.value).toBe(1);
+     expect(find(vals, "pms.trials_started")!.value).toBe(1);
+     expect(find(vals, "pms.invoices_issued")!.value).toBe(2);
+diff --git a/functions/test/update.test.ts b/functions/test/update.test.ts
+new file mode 100644
+index 0000000..0be7c7a
+--- /dev/null
++++ b/functions/test/update.test.ts
+@@ -0,0 +1,223 @@
++import { describe, expect, it } from "vitest";
++import { DAY, DAY_WINDOW, MemoryPayReader, NOW, T_DAY } from "./helpers";
++import { pmsRentAdapter } from "../src/collectors/pay/adapters/rent";
++import { lmmInstalmentAdapter, lmxInstalmentAdapter, lmmSettlementAdapter, lmxTransfersAdapter, lmxWithdrawalsAdapter } from "../src/collectors/pay/adapters/instalments";
++import { landlordWatchAdapter, complianceReportAdapter } from "../src/collectors/pay/adapters/revenueRows";
++import { aggregateFacts } from "../src/collectors/pay/aggregate";
++import { createPayCollector } from "../src/collectors/pay";
++import { createPmsCollector } from "../src/collectors/pms";
++import { loadPmsUsers } from "../src/collectors/pms/users";
++import { isUserSmsLog, smsLogMetrics } from "../src/collectors/pms/smsLog";
++import { activeAgents, commissionCents, deskMetrics, inquiryMetrics, toDeskRow } from "../src/collectors/cyber/desk";
++import { createCyberCollector, snapshotCyber } from "../src/collectors/cyber";
++import { MemoryKpiStore } from "../src/core/store";
++import { runDays } from "../src/jobs/run";
++import { dailyPeriod } from "../src/core/period";
++import { KpiValue } from "../src/core/types";
++import { DocRecord } from "../src/core/reader";
++
++const ts = (ms: number) => ({ toMillis: () => ms });
++const find = (v: KpiValue[], id: string, grain = "daily", dims: Record<string, string> = {}) =>
++  v.find((x) => x.kpiId === id && x.grain === grain && JSON.stringify(x.dimensions) === JSON.stringify(dims));
++const rec = (path: string, data: Record<string, unknown>): DocRecord => ({ id: path.split("/").pop()!, path, data });
++
++describe("rent under the convenience-fee model", () => {
++  const txn = {
++    status: "success", userId: "u1", createdAt: ts(T_DAY), completedAt: ts(T_DAY + 1000),
++    chargeMinor: 100500, netPayoutMinor: 98050, agentMinor: 200, paystackFeeMinor: 1507, platformKeptMinor: 743,
++    paystackResponse: { amount: 100500, fees: 1507 },
++  };
++
++  it("uses the books PAY recorded: kept money is net, the agent share is pass-through", async () => {
++    const r = new MemoryPayReader().add("default", "transactions/INV_1", txn);
++    const [f] = await pmsRentAdapter.load(r, DAY_WINDOW);
++    expect(f).toMatchObject({ gmvCents: 100500, platformRevenueCents: 2450, passThroughCents: 200, gatewayFeeCents: 1507, netRevenueCents: 743, basis: "recorded" });
++  });
++
++  it("needs no user or account lookups when the books are recorded", async () => {
++    const r = new MemoryPayReader().add("default", "transactions/INV_1", txn);
++    let lookups = 0;
++    const orig = r.getDocs.bind(r);
++    r.getDocs = async (...a) => { lookups++; return orig(...a); };
++    await pmsRentAdapter.load(r, DAY_WINDOW);
++    expect(lookups).toBe(0);
++  });
++});
++
++describe("Lipa Mos Mos and Lipa Mdogo Mdogo", () => {
++  it("LMM instalment: revenue is the surcharge, net is what PAY kept; failed and pending earn nothing", async () => {
++    const r = new MemoryPayReader()
++      .add("default", "lmm_payments/LMM_1", { status: "credited", chargeMinor: 20500, creditMinor: 20000, surchargeMinor: 500, paystackFeeMinor: 300, keptMinor: 200, createdAt: T_DAY, agentId: "a1" })
++      .add("default", "lmm_payments/LMM_2", { status: "rejected_amount", chargeMinor: 20500, createdAt: T_DAY })
++      .add("default", "lmm_payments/LMM_3", { status: "pending", chargeMinor: 1000, createdAt: T_DAY });
++    const facts = await lmmInstalmentAdapter.load(r, DAY_WINDOW);
++    const ok = facts.find((f) => f.reference === "LMM_1")!;
++    expect(ok).toMatchObject({ status: "success", stream: "instalments", gmvCents: 20500, platformRevenueCents: 500, gatewayFeeCents: 300, netRevenueCents: 200, basis: "recorded" });
++    expect(facts.find((f) => f.reference === "LMM_2")).toMatchObject({ status: "failed", netRevenueCents: 0 });
++    expect(facts.find((f) => f.reference === "LMM_3")).toMatchObject({ status: "pending", netRevenueCents: 0 });
++  });
++
++  it("LMX instalment: revenue = service fee + reserve, desk share passes through, net after Paystack fee", async () => {
++    const r = new MemoryPayReader().add("default", "lmmx_payments/LMX_1", { status: "credited", chargeMinor: 21000, serviceMinor: 400, reserveMinor: 150, deskShareMinor: 300, paystackFeeMinor: 50, createdAt: T_DAY, tenantId: "t1" });
++    const [f] = await lmxInstalmentAdapter.load(r, DAY_WINDOW);
++    expect(f).toMatchObject({ stream: "instalments", gmvCents: 21000, platformRevenueCents: 550, passThroughCents: 300, gatewayFeeCents: 50, netRevenueCents: 200 });
++  });
++
++  it("LMM settlement: fee minus Paystack transfer cost over successful chunks, as a revenue-only line", async () => {
++    const r = new MemoryPayReader()
++      .add("default", "lmm_settlements/S1", { createdAt: T_DAY, chunks: [{ status: "success", feeMinor: 1000, paystackCostMinor: 600 }, { status: "failed", feeMinor: 999, paystackCostMinor: 999 }] })
++      .add("default", "lmm_settlements/S2", { createdAt: T_DAY, chunks: [{ status: "failed", feeMinor: 500, paystackCostMinor: 100 }] });
++    const facts = await lmmSettlementAdapter.load(r, DAY_WINDOW);
++    expect(facts).toHaveLength(1);
++    expect(facts[0]).toMatchObject({ stream: "transfers", platformRevenueCents: 1000, gatewayFeeCents: 600, netRevenueCents: 400, gmvCents: 0, revenueOnly: true });
++  });
++
++  it("LMX ledger: payout fee is a cost, withdraw service is revenue, everything else is ignored", async () => {
++    const r = new MemoryPayReader()
++      .add("default", "lmmx_ledger/a", { type: "payout_fee", amountMinor: 300, direction: "out", createdAt: T_DAY })
++      .add("default", "lmmx_ledger/b", { type: "withdraw_service", amountMinor: 150, direction: "in", createdAt: T_DAY })
++      .add("default", "lmmx_ledger/c", { type: "collect", amountMinor: 99999, direction: "in", createdAt: T_DAY })
++      .add("default", "lmmx_ledger/d", { type: "service_platform", amountMinor: 400, direction: "in", createdAt: T_DAY });
++    const [cost] = await lmxTransfersAdapter.load(r, DAY_WINDOW);
++    const [fee] = await lmxWithdrawalsAdapter.load(r, DAY_WINDOW);
++    expect(cost).toMatchObject({ stream: "transfers", gatewayFeeCents: 300, netRevenueCents: -300, revenueOnly: true });
++    expect(fee).toMatchObject({ stream: "withdrawals", platformRevenueCents: 150, netRevenueCents: 150, revenueOnly: true });
++  });
++});
++
++describe("Landlord Watch and compliance reports", () => {
++  it("read their own types from platform_revenue and ignore the rest", async () => {
++    const r = new MemoryPayReader()
++      .add("default", "platform_revenue/R1", { type: "landlord_watch_transcript", grossAmount: 99, paystackFees: 2, netRevenue: 97, createdAt: ts(T_DAY) })
++      .add("default", "platform_revenue/R2", { type: "compliance_report", grossAmount: 200, paystackFees: 4, netRevenue: 196, createdAt: ts(T_DAY) })
++      .add("default", "platform_revenue/R3", { type: "report_charge", grossAmount: 50, netRevenue: 49, createdAt: ts(T_DAY) });
++    const lw = await landlordWatchAdapter.load(r, DAY_WINDOW);
++    const cr = await complianceReportAdapter.load(r, DAY_WINDOW);
++    expect(lw).toHaveLength(1);
++    expect(lw[0]).toMatchObject({ platform: "cyber", stream: "lookups", gmvCents: 9900, gatewayFeeCents: 200, netRevenueCents: 9700, revenueOnly: true });
++    expect(cr).toHaveLength(1);
++    expect(cr[0]).toMatchObject({ platform: "pms", stream: "reports", netRevenueCents: 19600 });
++  });
++});
++
++describe("revenue-only lines", () => {
++  it("count in revenue but never in attempts or the success rate", async () => {
++    const r = new MemoryPayReader()
++      .add("default", "lmm_payments/LMM_1", { status: "credited", chargeMinor: 20500, surchargeMinor: 500, paystackFeeMinor: 300, keptMinor: 200, createdAt: T_DAY })
++      .add("default", "lmm_payments/LMM_2", { status: "pending", chargeMinor: 1000, createdAt: T_DAY })
++      .add("default", "lmm_settlements/S1", { createdAt: T_DAY, chunks: [{ status: "success", feeMinor: 1000, paystackCostMinor: 600 }] });
++    const store = new MemoryKpiStore();
++    await runDays({ store, collectors: [createPayCollector(r)], now: () => NOW }, [DAY]);
++    const vals = [...store.values.values()];
++    const pms = (id: string, dims: Record<string, string> = {}) => vals.find((v) => v.kpiId === id && v.platform === "pms" && JSON.stringify(v.dimensions) === JSON.stringify(dims))!;
++    expect(pms("pay.attempts").value).toBe(2); // the two instalments, not the settlement
++    expect(pms("pay.success_rate")).toMatchObject({ value: 50, numerator: 1, denominator: 2 });
++    expect(pms("pay.net_revenue").value).toBe(600); // 200 instalment + 400 settlement margin
++    expect(pms("pay.net_revenue", { stream: "instalments" }).value).toBe(200);
++    expect(pms("pay.net_revenue", { stream: "transfers" }).value).toBe(400);
++    expect(vals.find((v) => v.kpiId === "company.net_revenue" && v.platform === "all" && Object.keys(v.dimensions).length === 0)!.value).toBe(600);
++  });
++
++  it("aggregation works on facts directly", () => {
++    const ctx = { period: dailyPeriod(DAY), runId: "t", now: NOW, stuckMs: 1800000 };
++    expect(aggregateFacts([], ctx).length).toBeGreaterThan(0);
++  });
++});
++
++describe("Plot Yangu SMS audit log and credits", () => {
++  it("counts sends, recipients, credits and acceptance; ignores other collections called sms-sent-log", () => {
++    const m = smsLogMetrics([
++      rec("users/u1/sms-sent-log/a", { recipientCount: 10, successCount: 9, failCount: 1, tokensCharged: 9 }),
++      rec("users/u2/sms-sent-log/b", { recipientCount: 1, successCount: 1, failCount: 0, tokensCharged: 1 }),
++      rec("shops/s1/sms-sent-log/c", { recipientCount: 99, successCount: 99, failCount: 0, tokensCharged: 99 }),
++    ]);
++    expect(isUserSmsLog("users/u1/sms-sent-log/a")).toBe(true);
++    expect(isUserSmsLog("shops/s1/sms-sent-log/c")).toBe(false);
++    expect(m["pms.sms_messages"].value).toBe(2);
++    expect(m["pms.sms_recipients_ok"].value).toBe(10);
++    expect(m["pms.sms_tokens_charged"].value).toBe(10);
++    expect(m["pms.sms_success_rate"]).toMatchObject({ value: 90.91, numerator: 10, denominator: 11 });
++  });
++
++  it("reads SMS credits from users.tokens (messageTokens is only a fallback)", async () => {
++    const r = new MemoryPayReader()
++      .add("default", "users/u1", { localId: 1, tokens: 70, messageTokens: 5 })
++      .add("default", "users/u2", { localId: 2, messageTokens: 30 });
++    const users = await loadPmsUsers(r);
++    expect(users.map((u) => u.tokens).sort()).toEqual([30, 70]);
++    expect(r.queries.flatMap((q) => q.select)).toContain("tokens");
++  });
++
++  it("the PMS collector emits the SMS KPIs from the group query", async () => {
++    const r = new MemoryPayReader().add("default", "users/u1/sms-sent-log/a", { recipientCount: 3, successCount: 3, failCount: 0, tokensCharged: 3, sentAt: ts(T_DAY), message: "SECRET" });
++    const vals = await createPmsCollector(r).collect({ period: dailyPeriod(DAY), runId: "t", now: NOW });
++    expect(find(vals, "pms.sms_tokens_charged")!.value).toBe(3);
++    expect(r.queries.flatMap((q) => q.select).join(",")).not.toMatch(/message|phone|inquirer/i);
++  });
++});
++
++describe("DESK network and House to Rent", () => {
++  it("derives commission from the share of what is left after the Paystack fee", () => {
++    expect(commissionCents(10000, 200, 20)).toBe(1960);
++  });
++
++  it("totals, per-product split, refunds and distinct agents", () => {
++    const rows = [
++      rec("desk_events/e1", { type: "sms_purchase", product: "chama", agentId: "a1", grossMinor: 10000, feeMinor: 200, agentSharePct: 20 }),
++      rec("desk_events/e2", { type: "rent_payment", product: "pms", agentId: "a2", grossMinor: 50000, feeMinor: 700, agentSharePct: 10 }),
++      rec("desk_events/e3", { type: "subscription_payment", product: "pms", agentId: "a1", grossMinor: 20000, feeMinor: 300, agentSharePct: 10 }),
++      rec("desk_events/e4", { type: "refund", product: "pms", agentId: "a2", grossMinor: 5000, feeMinor: 0, agentSharePct: 10 }),
++    ].map(toDeskRow);
++    const m = deskMetrics(rows);
++    expect(m.total["cyber.desk_events"].value).toBe(3);
++    expect(m.total["cyber.desk_gross"].value).toBe(80000);
++    expect(m.total["cyber.desk_refunds"].value).toBe(1);
++    expect(m.total["cyber.desk_refunded_gross"].value).toBe(5000);
++    expect(m.byProduct.pms["cyber.desk_gross"].value).toBe(70000);
++    expect(m.byProduct.school["cyber.desk_events"].value).toBe(0);
++    expect(activeAgents(rows).size).toBe(2);
++  });
++
++  it("house inquiries: sent, failed, credits and distinct owners", () => {
++    const { metrics, managers } = inquiryMetrics([
++      rec("houseInquiries/1", { status: "sent", credits: 2, ownerId: "PYP-1" }),
++      rec("houseInquiries/2", { status: "sent", credits: 3, ownerId: "PYP-1" }),
++      rec("houseInquiries/3", { status: "sent", credits: 1, ownerId: "PYP-2" }),
++      rec("houseInquiries/4", { status: "failed", credits: 5, ownerId: "PYP-3" }),
++    ]);
++    expect(metrics["cyber.house_inquiries_sent"].value).toBe(3);
++    expect(metrics["cyber.house_inquiry_credits"].value).toBe(6); // failed inquiries are not charged
++    expect(metrics["cyber.house_inquiry_success_rate"]).toMatchObject({ value: 75, numerator: 3, denominator: 4 });
++    expect(managers).toBe(2);
++  });
++
++  it("collector: desk and inquiry KPIs for the day, distinct agents for the week, and no PII selected", async () => {
++    const r = new MemoryPayReader()
++      .add("default", "desk_events/e1", { type: "sms_purchase", product: "chama", agentId: "a1", grossMinor: 10000, feeMinor: 200, agentSharePct: 20, paidAt: T_DAY })
++      .add("default", "desk_events/e2", { type: "rent_payment", product: "pms", agentId: "a2", grossMinor: 50000, feeMinor: 700, agentSharePct: 10, paidAt: T_DAY - 86_400_000 })
++      .add("default", "houseInquiries/h1", { status: "sent", credits: 2, ownerId: "PYP-1", createdAt: ts(T_DAY), inquirerPhone: "0700", message: "SECRET" });
++    const vals = await createCyberCollector(r).collect({ period: dailyPeriod(DAY), runId: "t", now: NOW });
++    expect(find(vals, "cyber.desk_gross", "daily", { product: "chama" })!.value).toBe(10000);
++    expect(find(vals, "cyber.desk_commission", "daily", { product: "chama" })!.value).toBe(1960);
++    expect(find(vals, "cyber.desk_agents_active")!.value).toBe(1);
++    expect(find(vals, "cyber.desk_agents_active", "weekly")!.value).toBe(2);
++    expect(find(vals, "cyber.house_inquiries_sent")!.value).toBe(1);
++    expect(r.queries.flatMap((q) => q.select).join(",")).not.toMatch(/phone|message|inquirer|name/i);
++  });
++
++  it("stock snapshot counts agents by rank and status from aggregates only", async () => {
++    const r = new MemoryPayReader()
++      .add("default", "desk_agents/a", { rank: "clerk", status: "active" })
++      .add("default", "desk_agents/b", { rank: "clerk", status: "suspended" })
++      .add("default", "desk_agents/c", { rank: "lead", status: "active" })
++      .add("default", "desk_customers/x", {});
++    const vals = await snapshotCyber(r, NOW, "snap");
++    const g = (id: string, dims: Record<string, string> = {}) => find(vals, id, "daily", dims)!.value;
++    expect(g("cyber.desk_agents_total")).toBe(3);
++    expect(g("cyber.desk_agents_active_total")).toBe(2);
++    expect(g("cyber.desk_agents_by_rank", { rank: "clerk" })).toBe(2);
++    expect(g("cyber.desk_agents_by_rank", { rank: "senior" })).toBe(0);
++    expect(g("cyber.desk_customers_total")).toBe(1);
++    expect(r.queries).toHaveLength(0);
++  });
++});
+diff --git a/source-indexes/plot-9fd6e.indexes-to-add.json b/source-indexes/plot-9fd6e.indexes-to-add.json
+index 391454b..5c942a4 100644
+--- a/source-indexes/plot-9fd6e.indexes-to-add.json
++++ b/source-indexes/plot-9fd6e.indexes-to-add.json
+@@ -1,29 +1,131 @@
+ {
+   "_note": "MERGE these fieldOverrides into the PMS/default-database repo's own firestore.indexes.json and deploy from THAT repo (PAY, PMS and Cyber share this database). Do not deploy this file on its own: `firebase deploy --only firestore:indexes` makes the project match the file. REQUIRED: units.isOccupied and payments.paymentDate (nested two levels, no fallback: PMS KPIs for occupancy and rent collected fail without them; the Firestore error message contains a one-click link). RECOMMENDED: the rest (without them the reader falls back to per-user queries, slower and billed per user document).",
+   "fieldOverrides": [
+-    { "collectionGroup": "units", "fieldPath": "isOccupied", "indexes": [
+-      { "order": "ASCENDING", "queryScope": "COLLECTION" },
+-      { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" } ] },
+-    { "collectionGroup": "payments", "fieldPath": "paymentDate", "indexes": [
+-      { "order": "ASCENDING", "queryScope": "COLLECTION" },
+-      { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" } ] },
+-    { "collectionGroup": "invoices", "fieldPath": "createdAt", "indexes": [
+-      { "order": "ASCENDING", "queryScope": "COLLECTION" },
+-      { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" } ] },
+-    { "collectionGroup": "invoices", "fieldPath": "isPaid", "indexes": [
+-      { "order": "ASCENDING", "queryScope": "COLLECTION" },
+-      { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" } ] },
+-    { "collectionGroup": "invoices", "fieldPath": "billingMonth", "indexes": [
+-      { "order": "ASCENDING", "queryScope": "COLLECTION" },
+-      { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" } ] },
+-    { "collectionGroup": "tenants", "fieldPath": "createdAt", "indexes": [
+-      { "order": "ASCENDING", "queryScope": "COLLECTION" },
+-      { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" } ] },
+-    { "collectionGroup": "tenants", "fieldPath": "isActive", "indexes": [
+-      { "order": "ASCENDING", "queryScope": "COLLECTION" },
+-      { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" } ] },
+-    { "collectionGroup": "properties", "fieldPath": "createdAt", "indexes": [
+-      { "order": "ASCENDING", "queryScope": "COLLECTION" },
+-      { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" } ] }
++    {
++      "collectionGroup": "units",
++      "fieldPath": "isOccupied",
++      "indexes": [
++        {
++          "order": "ASCENDING",
++          "queryScope": "COLLECTION"
++        },
++        {
++          "order": "ASCENDING",
++          "queryScope": "COLLECTION_GROUP"
++        }
++      ]
++    },
++    {
++      "collectionGroup": "payments",
++      "fieldPath": "paymentDate",
++      "indexes": [
++        {
++          "order": "ASCENDING",
++          "queryScope": "COLLECTION"
++        },
++        {
++          "order": "ASCENDING",
++          "queryScope": "COLLECTION_GROUP"
++        }
++      ]
++    },
++    {
++      "collectionGroup": "invoices",
++      "fieldPath": "createdAt",
++      "indexes": [
++        {
++          "order": "ASCENDING",
++          "queryScope": "COLLECTION"
++        },
++        {
++          "order": "ASCENDING",
++          "queryScope": "COLLECTION_GROUP"
++        }
++      ]
++    },
++    {
++      "collectionGroup": "invoices",
++      "fieldPath": "isPaid",
++      "indexes": [
++        {
++          "order": "ASCENDING",
++          "queryScope": "COLLECTION"
++        },
++        {
++          "order": "ASCENDING",
++          "queryScope": "COLLECTION_GROUP"
++        }
++      ]
++    },
++    {
++      "collectionGroup": "invoices",
++      "fieldPath": "billingMonth",
++      "indexes": [
++        {
++          "order": "ASCENDING",
++          "queryScope": "COLLECTION"
++        },
++        {
++          "order": "ASCENDING",
++          "queryScope": "COLLECTION_GROUP"
++        }
++      ]
++    },
++    {
++      "collectionGroup": "tenants",
++      "fieldPath": "createdAt",
++      "indexes": [
++        {
++          "order": "ASCENDING",
++          "queryScope": "COLLECTION"
++        },
++        {
++          "order": "ASCENDING",
++          "queryScope": "COLLECTION_GROUP"
++        }
++      ]
++    },
++    {
++      "collectionGroup": "tenants",
++      "fieldPath": "isActive",
++      "indexes": [
++        {
++          "order": "ASCENDING",
++          "queryScope": "COLLECTION"
++        },
++        {
++          "order": "ASCENDING",
++          "queryScope": "COLLECTION_GROUP"
++        }
++      ]
++    },
++    {
++      "collectionGroup": "properties",
++      "fieldPath": "createdAt",
++      "indexes": [
++        {
++          "order": "ASCENDING",
++          "queryScope": "COLLECTION"
++        },
++        {
++          "order": "ASCENDING",
++          "queryScope": "COLLECTION_GROUP"
++        }
++      ]
++    },
++    {
++      "collectionGroup": "sms-sent-log",
++      "fieldPath": "sentAt",
++      "indexes": [
++        {
++          "order": "ASCENDING",
++          "queryScope": "COLLECTION"
++        },
++        {
++          "order": "ASCENDING",
++          "queryScope": "COLLECTION_GROUP"
++        }
++      ]
++    }
+   ]
+ }
+-- 
+2.43.0
+

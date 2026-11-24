@@ -1,6 +1,6 @@
 # KPI catalogue (generated)
 
-146 KPIs.
+185 KPIs.
 
 | id | name | scope | platform | type | unit | grains | dimensions | direction | status | caveat |
 |----|------|-------|----------|------|------|--------|------------|-----------|--------|--------|
@@ -100,7 +100,10 @@
 | `pms.trials_expiring_7d` | Trials ending in 7 days | platform | pms | stock | count | daily | - | neutral | active |  |
 | `pms.trials_awaiting_downgrade` | Expired trials not yet downgraded | platform | pms | stock | count | daily | - | neutral | active |  |
 | `pms.trial_conversion_rate` | Trial to paid conversion | platform | pms | ratio | percent | daily | - | higher_is_better | active |  |
-| `pms.tokens_outstanding` | Unspent SMS tokens | platform | pms | stock | count | daily | - | neutral | active | Balance only: SMS consumption is not synced to the cloud. |
+| `pms.tokens_outstanding` | Unspent SMS tokens | platform | pms | stock | count | daily | - | neutral | active | Balance as stored on the manager's account (users.tokens). |
+| `pms.sms_tokens_used` | SMS tokens used | platform | pms | flow | count | daily | - | neutral | active | Exact: written by the server at send time, not synced from devices. |
+| `pms.sms_accepted` | SMS accepted by the provider | platform | pms | flow | count | daily | - | higher_is_better | active |  |
+| `pms.sms_failed` | SMS failed | platform | pms | flow | count | daily | - | lower_is_better | active |  |
 | `pms.properties_total` | Properties (total) | platform | pms | stock | count | daily | - | neutral | active |  |
 | `pms.tenants_active` | Active tenants | platform | pms | stock | count | daily | - | neutral | active |  |
 | `pms.units_total` | Units (total) | platform | pms | stock | count | daily | - | neutral | active |  |
@@ -126,6 +129,42 @@
 | `cyber.expenses_recorded` | Expenses recorded | platform | cyber | flow | count | daily | - | neutral | planned |  |
 | `cyber.reports_generated` | Reports generated | platform | cyber | flow | count | daily | - | neutral | planned |  |
 | `cyber.report_jobs_failed` | Report jobs failed | platform | cyber | flow | count | daily | - | lower_is_better | planned |  |
+| `desk.agents` | Desk agents | platform | cyber | stock | count | daily | status | neutral | active |  |
+| `desk.agents_active` | Active desk agents | platform | cyber | stock | count | daily | - | higher_is_better | active |  |
+| `desk.agents_applied` | New agent applications | platform | cyber | flow | count | daily | - | higher_is_better | active |  |
+| `desk.customers_owned` | Customers owned by a desk | platform | cyber | stock | count | daily | product | neutral | active |  |
+| `desk.customers_first_purchase_done` | Desk customers that have bought | platform | cyber | stock | count | daily | - | higher_is_better | active |  |
+| `desk.sessions_started` | Desk sessions started | platform | cyber | flow | count | daily | product | neutral | active |  |
+| `desk.sessions_verified` | Desk sessions verified | platform | cyber | flow | count | daily | - | higher_is_better | active |  |
+| `desk.session_verify_rate` | Session verification rate | platform | cyber | ratio | percent | daily | - | higher_is_better | active |  |
+| `desk.agents_working` | Agents working | platform | cyber | flow | count | daily/weekly/monthly | - | higher_is_better | active |  |
+| `desk.customers_served` | Customers served | platform | cyber | flow | count | daily/weekly/monthly | - | higher_is_better | active |  |
+| `desk.tickets_created` | Service tickets quoted | platform | cyber | flow | count | daily | serviceType | neutral | active |  |
+| `desk.tickets_paid` | Service tickets paid | platform | cyber | flow | count | daily | serviceType | higher_is_better | active |  |
+| `desk.ticket_conversion` | Ticket payment rate | platform | cyber | ratio | percent | daily | - | higher_is_better | active | Tickets still awaiting payment count as unpaid until they pay, so recent days read low. |
+| `desk.tickets_paid_not_committed` | Paid tickets not yet committed | platform | cyber | flow | count | daily | - | lower_is_better | active | Normal for minutes after payment; a count that does not clear is a delivery fault. |
+| `desk.tickets_failed` | Service tickets failed or expired | platform | cyber | flow | count | daily | - | lower_is_better | active |  |
+| `desk.service_sales` | Desk service sales (gross) | platform | cyber | flow | KES_CENTS | daily | serviceType | higher_is_better | active | The same money is already in the PAY KPIs as Cyber service charges: do not add the two. |
+| `desk.service_platform_revenue` | Desk service revenue to Samuhia | platform | cyber | flow | KES_CENTS | daily | - | higher_is_better | active | Already counted inside pay.net_revenue (Cyber); shown here for the desk view only. |
+| `desk.attributed_sales` | Sales through desk-owned customers | platform | cyber | flow | count | daily | product,type | higher_is_better | active |  |
+| `desk.attributed_gmv` | Desk-attributed gross sales | platform | cyber | flow | KES_CENTS | daily | product,type | higher_is_better | active | A subset of pay.gmv, not an addition to it. |
+| `desk.agent_share_paid` | Paid to agents by split | platform | cyber | flow | KES_CENTS | daily | product,type | neutral | active | Recomputed from the event the way PAY's split computes it. pay.net_revenue does not subtract this. |
+| `desk.net_kept_by_samuhia` | Net kept by Samuhia on desk sales | platform | cyber | flow | KES_CENTS | daily | product,type | higher_is_better | active |  |
+| `desk.refunds` | Desk-attributed refunds | platform | cyber | flow | count | daily | - | lower_is_better | active |  |
+| `desk.sms_credits_sold` | SMS credits sold through desks | platform | cyber | flow | count | daily | - | higher_is_better | active |  |
+| `desk.agent_earnings` | Agent earnings recorded | platform | cyber | flow | KES_CENTS | daily | kind | neutral | active |  |
+| `desk.reversals` | Commission reversals | platform | cyber | flow | KES_CENTS | daily | - | lower_is_better | active |  |
+| `desk.payable_outstanding` | Agent payouts waiting | platform | cyber | stock | KES_CENTS | daily | - | lower_is_better | active |  |
+| `desk.payouts_processing` | Payout transfers in flight | platform | cyber | stock | count | daily | - | lower_is_better | active | A count that stays above zero for days means a transfer never confirmed. |
+| `desk.support_visits_logged` | Support visits logged | platform | cyber | flow | count | daily | category | neutral | active |  |
+| `desk.support_visits_confirmed` | Support visits confirmed | platform | cyber | flow | count | daily | - | higher_is_better | active |  |
+| `desk.support_confirm_rate` | Support confirmation rate | platform | cyber | ratio | percent | daily | - | higher_is_better | active | Recent days read low until customers confirm. |
+| `desk.requests_new` | Customer help requests | platform | cyber | flow | count | daily | source | neutral | active |  |
+| `desk.requests_answered` | Help requests answered | platform | cyber | flow | count | daily | - | higher_is_better | active | Recent days rise as desks answer. |
+| `desk.requests_open` | Help requests waiting | platform | cyber | stock | count | daily | status | lower_is_better | active |  |
+| `desk.rent_batches` | Rent STK batches | platform | cyber | flow | count | daily | - | neutral | active |  |
+| `desk.rent_stk_sent` | Rent STK prompts sent | platform | cyber | flow | count | daily | - | higher_is_better | active |  |
+| `desk.rent_stk_failed` | Rent STK prompts failed | platform | cyber | flow | count | daily | - | lower_is_better | active |  |
 | `company.attempts` | Payment attempts (company) | company | all | flow | count | daily | stream | neutral | active |  |
 | `company.success` | Successful payments (company) | company | all | flow | count | daily | stream | higher_is_better | active |  |
 | `company.success_rate` | Payment success rate (company) | company | all | ratio | percent | daily | stream | higher_is_better | active |  |

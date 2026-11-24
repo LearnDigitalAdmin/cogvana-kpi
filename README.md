@@ -1,6 +1,6 @@
-# cogvana-kpi
+# SAMUHIA KPI (repo: cogvana-kpi)
 
-Read-only KPI pipeline for the SAMUHIA / Cogvana platforms. Phase 1: PAY money KPIs
+Read-only KPI pipeline for the SAMUHIA platforms (Register, MyChama, Plot Yangu, PAY, Samuhia Desk). Phase 1: PAY money KPIs
 (per platform, per charge type, per revenue stream) and company-level rollups.
 
 ```
@@ -15,17 +15,18 @@ platform_stats/totals ───► snapshot job             kpi_runs            
 | Path | Purpose |
 |------|---------|
 | `functions/src/core/` | Types, Nairobi-time periods, timestamp normaliser, money, registry helpers, store, shared Firestore reader (queries, counts, sums) |
-| `functions/src/registry/` | KPI definitions as data (`pay.ts`, `register.ts`, `chama.ts`, `pms.ts`, `cyber.ts`, `company.ts`) |
+| `functions/src/registry/` | KPI definitions as data (`pay.ts`, `register.ts`, `chama.ts`, `pms.ts`, `cyber.ts`, `desk.ts`, `company.ts`) |
 | `functions/src/collectors/pay/` | Facts model, Firestore reader, one adapter per charge type, aggregation, stats snapshot |
 | `functions/src/collectors/register/` | Register collector: registers, messages, SMS log, token sales, growth, stock snapshot |
 | `functions/src/collectors/chama/` | Chama collector: money ledger, SMS, growth, plans, loans, overdue, MGR stock snapshot |
 | `functions/src/collectors/pms/` | Plot Yangu collector: accounts, plans, trials, sync health, billing, receivables, portfolio (as of last sync) |
-| `functions/src/collectors/cyber/` | Cyber collector: WhatsApp usage only (exact via the meter, approximate from sessions) |
-| `cyber-whatsapp-meter/` | 3 files to copy into the CYBER repo so exact WhatsApp usage is recorded |
+| `functions/src/collectors/cyber/` | Samuhia Desk WhatsApp bot usage (exact from the meter now in the CYBER repo, approximate from sessions) |
+| `functions/src/collectors/desk/` | Samuhia Desk agent network: agents, sessions, paid services, desk-attributed sales, earnings, payouts, support, rent batches |
+| `cyber-whatsapp-meter/` | Superseded: the meter now lives in the CYBER repo; kept for history |
 | `functions/src/rollups/company.ts` | Company totals summed from platform values |
 | `functions/src/jobs/run.ts` | Idempotent run orchestration, freshness, run logging |
 | `functions/src/index.ts` | `kpiDaily`, `kpiStatsSnapshot`, `kpiBackfill`, `kpiGetValues` |
-| `functions/src/scripts/dryRun.ts` | Read-only check against real data (writes nothing): `npm run dry-run -- DATE [pay\|register\|chama\|pms\|cyber]` |
+| `functions/src/scripts/dryRun.ts` | Read-only check against real data (writes nothing): `npm run dry-run -- DATE [pay\|register\|chama\|pms\|cyber\|desk]` |
 | `functions/src/scripts/backfill.ts` | Local backfill for a date range (writes to the KPI project) |
 | `docs/` | Glossary and source-of-truth map |
 | `source-indexes/` | Indexes to merge into the Chama repo (optional, speeds up reads) |

@@ -4,6 +4,7 @@ import { Layout } from "./components/Layout";
 import { RangeProvider } from "./hooks/useRange";
 import Catalogue from "./pages/Catalogue";
 import Cross from "./pages/Cross";
+import DeskPage from "./pages/DeskPage";
 import Health from "./pages/Health";
 import Money from "./pages/Money";
 import Overview from "./pages/Overview";
@@ -21,7 +22,8 @@ export default function App() {
               <Route path="register" element={<PlatformPage layoutKey="register" />} />
               <Route path="chama" element={<PlatformPage layoutKey="chama" />} />
               <Route path="pms" element={<PlatformPage layoutKey="pms" />} />
-              <Route path="cyber" element={<PlatformPage layoutKey="cyber" />} />
+              <Route path="desk" element={<DeskPage />} />
+              <Route path="cyber" element={<DeskPage />} />
               <Route path="cross" element={<Cross />} />
               <Route path="health" element={<Health />} />
               <Route path="catalogue" element={<Catalogue />} />

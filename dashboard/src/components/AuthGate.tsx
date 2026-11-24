@@ -17,7 +17,7 @@ type State = { s: "loading" } | { s: "out" } | { s: "denied"; user: User } | { s
 function SetupScreen() {
   return (
     <div className="center-screen"><div className="card narrow">
-      <h1>Cogvana KPIs</h1>
+      <h1>Samuhia KPIs</h1>
       <p>Firebase is not configured. Copy <code>.env.example</code> to <code>.env</code> and fill in <code>VITE_FIREBASE_API_KEY</code>, <code>VITE_FIREBASE_AUTH_DOMAIN</code>, <code>VITE_FIREBASE_PROJECT_ID</code> and <code>VITE_FIREBASE_APP_ID</code>, then rebuild.</p>
     </div></div>
   );
@@ -39,7 +39,7 @@ function Login() {
   };
   return (
     <div className="center-screen"><div className="card narrow">
-      <h1>Cogvana KPIs</h1>
+      <h1>Samuhia KPIs</h1>
       <p className="muted">Sign in to see how the company is doing.</p>
       <button className="btn btn-primary block" disabled={busy} onClick={() => void run(() => signInWithPopup(auth, new GoogleAuthProvider()))}>Continue with Google</button>
       <div className="or">or</div>

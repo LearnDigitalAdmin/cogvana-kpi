@@ -6,7 +6,7 @@ import { formatHours } from "../lib/format";
 export function FreshnessBanner() {
   const f = useFreshness();
   if (f.isLoading || f.isError || f.level === "ok") return null;
-  const missing = f.rows.filter((r) => r.hours === null && ["pay", "register", "chama", "pms", "cyber", "rollups"].includes(r.collector)).map((r) => r.collector);
+  const missing = f.rows.filter((r) => r.hours === null && ["pay", "register", "chama", "pms", "cyber", "desk", "rollups"].includes(r.collector)).map((r) => r.collector);
   const old = f.rows.filter((r) => r.hours !== null && r.hours >= 12).map((r) => `${r.collector} ${formatHours(r.hours as number)}`);
   const parts = [old.length ? `Behind: ${old.join(", ")}` : "", missing.length ? `No reading: ${missing.join(", ")}` : ""].filter(Boolean).join(". ");
   return (

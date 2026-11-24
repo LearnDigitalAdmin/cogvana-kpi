@@ -2,6 +2,7 @@ import { CollectContext, Collector, Grain, KpiValue, Period } from "../../core/t
 import { periodFor } from "../../core/period";
 import { SourceReader } from "../../core/reader";
 import { emitMetrics, makeValue } from "../../core/values";
+import { num } from "../../core/money";
 import { billingMetrics, distinctUsers, INVOICE_SELECT, PAYMENT_SELECT, userIdOf } from "./billing";
 import { pmsUsersIn } from "./users";
 
@@ -41,14 +42,19 @@ export function createPmsCollector(reader: SourceReader): Collector {
       const w = { startMs: period.startMs, endMs: period.endMs };
       const base = { platform: "pms" as const, grain: "daily" as const, period, now, runId };
 
-      const [newUsers, newTrials, invoiceDocs, paymentDocs, tenantDocs, propertyDocs] = await Promise.all([
+      const [newUsers, newTrials, invoiceDocs, paymentDocs, tenantDocs, propertyDocs, smsDocs] = await Promise.all([
         pmsUsersIn(reader, "createdAt", "isoString", w.startMs, w.endMs),
         pmsUsersIn(reader, "trialStartedAt", "timestamp", w.startMs, w.endMs),
         invoices(w, INVOICE_SELECT),
         payments(w, PAYMENT_SELECT),
         reader.queryRange({ source: SRC, collection: "tenants", ...GROUP, timeField: "createdAt", timeType: "isoString", ...w, select: [] }),
         reader.queryRange({ source: SRC, collection: "properties", ...GROUP, timeField: "createdAt", timeType: "isoString", ...w, select: [] }),
+        // users/{u}/sms-sent-log: written server-side (never synced from devices), so it is exact, not "as of last sync".
+        reader.queryRange({ source: SRC, collection: "sms-sent-log", ...GROUP, timeField: "sentAt", timeType: "timestamp", ...w, select: ["recipientCount", "tokensCharged", "successCount", "failCount"] }),
       ]);
+      const smsUsed = smsDocs.reduce((t, d) => t + (num(d.data.tokensCharged) ?? 0), 0);
+      const smsOk = smsDocs.reduce((t, d) => t + (num(d.data.successCount) ?? 0), 0);
+      const smsFailed = smsDocs.reduce((t, d) => t + (num(d.data.failCount) ?? 0), 0);
 
       const newTenants = tenantDocs.filter((d) => userIdOf(d.path, "tenants")).length;
       const newProperties = propertyDocs.filter((d) => userIdOf(d.path, "properties")).length;
@@ -59,6 +65,9 @@ export function createPmsCollector(reader: SourceReader): Collector {
           {
             "pms.users_new": { value: newUsers.length },
             "pms.trials_started": { value: newTrials.length },
+            "pms.sms_tokens_used": { value: smsUsed },
+            "pms.sms_accepted": { value: smsOk },
+            "pms.sms_failed": { value: smsFailed },
             ...billingMetrics(invoiceDocs, paymentDocs, newTenants, newProperties),
           },
           base

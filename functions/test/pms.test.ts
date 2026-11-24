@@ -111,7 +111,7 @@ function seed(): MemoryPayReader {
 describe("PMS collector", () => {
   it("computes the daily set, ignoring Cyber's records and handling date-only payment dates", async () => {
     const vals = await createPmsCollector(seed()).collect({ period: dailyPeriod(DAY), runId: "t", now: NOW });
-    expect(vals).toHaveLength(11); // users_new, trials_started, 6 billing/growth, managers_active x3 grains
+    expect(vals).toHaveLength(14); // users_new, trials_started, 3 SMS, 6 billing/growth, managers_active x3 grains
     expect(find(vals, "pms.users_new")!.value).toBe(1);
     expect(find(vals, "pms.trials_started")!.value).toBe(1);
     expect(find(vals, "pms.invoices_issued")!.value).toBe(2);
@@ -173,5 +173,21 @@ describe("PMS stock snapshot", () => {
     expect(g("pms.collection_rate", { month: "2026-09" })).toMatchObject({ value: 30, numerator: 60000, denominator: 200000 });
     expect(g("pms.collection_rate", { month: "2026-08" }).value).toBe(100);
     expect(vals.every((v) => v.complete === false && v.periodStart === "2026-09-30")).toBe(true);
+  });
+});
+
+describe("PMS SMS usage and token balance", () => {
+  it("reads the balance from users.tokens (falling back to messageTokens)", () => {
+    expect(toPmsUser(rec("users/a", { tokens: 40, messageTokens: 7 })).tokens).toBe(40);
+    expect(toPmsUser(rec("users/b", { messageTokens: 7 })).tokens).toBe(7);
+  });
+  it("sums the day's sms-sent-log records", async () => {
+    const r = new MemoryPayReader()
+      .add("default", "users/u1/sms-sent-log/a", { sentAt: ts(T_DAY), recipientCount: 5, tokensCharged: 4, successCount: 4, failCount: 1 })
+      .add("default", "users/u2/sms-sent-log/b", { sentAt: ts(T_DAY + 10), recipientCount: 2, tokensCharged: 2, successCount: 2, failCount: 0 });
+    const vals = await createPmsCollector(r).collect({ period: dailyPeriod(DAY), runId: "t", now: NOW });
+    expect(find(vals, "pms.sms_tokens_used")!.value).toBe(6);
+    expect(find(vals, "pms.sms_accepted")!.value).toBe(6);
+    expect(find(vals, "pms.sms_failed")!.value).toBe(1);
   });
 });

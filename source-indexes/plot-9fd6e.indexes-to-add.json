@@ -1,5 +1,5 @@
 {
-  "_note": "MERGE these fieldOverrides into the PMS/default-database repo's own firestore.indexes.json and deploy from THAT repo (PAY, PMS and Cyber share this database). Do not deploy this file on its own: `firebase deploy --only firestore:indexes` makes the project match the file. REQUIRED: units.isOccupied and payments.paymentDate (nested two levels, no fallback: PMS KPIs for occupancy and rent collected fail without them; the Firestore error message contains a one-click link). RECOMMENDED: the rest (without them the reader falls back to per-user queries, slower and billed per user document).",
+  "_note": "MERGE these fieldOverrides into the PMS/default-database repo's own firestore.indexes.json and deploy from THAT repo (PAY, PMS and Cyber share this database). Do not deploy this file on its own: `firebase deploy --only firestore:indexes` makes the project match the file. REQUIRED: units.isOccupied and payments.paymentDate (nested two levels, no fallback: PMS KPIs for occupancy and rent collected fail without them; the Firestore error message contains a one-click link). REQUIRED for Plot Yangu SMS usage: sms-sent-log.sentAt (collection group, no fallback). RECOMMENDED: the rest (without them the reader falls back to per-user queries, slower and billed per user document).",
   "fieldOverrides": [
     { "collectionGroup": "units", "fieldPath": "isOccupied", "indexes": [
       { "order": "ASCENDING", "queryScope": "COLLECTION" },
@@ -23,6 +23,9 @@
       { "order": "ASCENDING", "queryScope": "COLLECTION" },
       { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" } ] },
     { "collectionGroup": "properties", "fieldPath": "createdAt", "indexes": [
+      { "order": "ASCENDING", "queryScope": "COLLECTION" },
+      { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" } ] },
+    { "collectionGroup": "sms-sent-log", "fieldPath": "sentAt", "indexes": [
       { "order": "ASCENDING", "queryScope": "COLLECTION" },
       { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" } ] }
   ]

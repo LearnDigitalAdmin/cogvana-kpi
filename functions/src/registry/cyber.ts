@@ -1,10 +1,12 @@
 import { defineKpi } from "../core/registry";
 
 /**
- * Cyber KPIs. Scope for now: WhatsApp usage only. Cyber keeps no WhatsApp message log: `whatsapp_sessions` holds one
+ * Samuhia Desk (formerly Samuhia Cyber): WhatsApp bot usage. The agent network has its own KPIs in `desk.ts`; both show on
+ * the same dashboard page. The bot keeps no WhatsApp message log: `whatsapp_sessions` holds one
  * short-lived document per phone number (30-minute timeout, overwritten on the next conversation). Two families:
- *  - EXACT, from the usage meter in `cyber-whatsapp-meter/` (collection `whatsapp_usage`, one document per Nairobi day).
- *    Values exist only from the day the meter is deployed; earlier days are absent, not zero.
+ *  - EXACT, from the usage meter that now ships in the CYBER repo (`functions/src/utils/whatsapp.usage.ts`, collection
+ *    `whatsapp_usage`, one document per Nairobi day). Values exist only from the day the meter went live; earlier days are
+ *    absent, not zero.
  *  - APPROXIMATE, from `whatsapp_sessions`, available without the meter. Each phone appears once, at its latest activity.
  * Everything else Cyber measures is listed with status "planned" and is not collected yet.
  */

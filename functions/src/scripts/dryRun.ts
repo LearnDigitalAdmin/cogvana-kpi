@@ -5,7 +5,8 @@
  *   npm run dry-run -- 2026-09-29 register   # Register activity, SMS and token KPIs
  *   npm run dry-run -- 2026-09-29 chama      # Chama ledger, SMS, loans and plan KPIs
  *   npm run dry-run -- 2026-09-29 pms        # Plot Yangu accounts, billing and receivables
- *   npm run dry-run -- 2026-09-29 cyber      # Cyber WhatsApp usage (exact when the meter is live)
+ *   npm run dry-run -- 2026-09-29 cyber      # WhatsApp usage (exact from the day the meter went live)
+ *   npm run dry-run -- 2026-09-29 desk       # Samuhia Desk agents, tickets, attributed sales, payouts
  *
  * Needs Application Default Credentials with read access to the source projects
  * (ideally impersonating the kpi-collector service account). Compare what it prints
@@ -21,6 +22,7 @@ import { snapshotChama } from "../collectors/chama/snapshot";
 import { createPmsCollector } from "../collectors/pms";
 import { snapshotPms } from "../collectors/pms/snapshot";
 import { createCyberCollector, snapshotCyber } from "../collectors/cyber";
+import { createDeskCollector, snapshotDesk } from "../collectors/desk";
 import { KpiValue } from "../core/types";
 import { snapshotRegister } from "../collectors/register/snapshot";
 import { FirestoreSourceReader } from "../core/firestoreReader";
@@ -138,29 +140,29 @@ function show(values: KpiValue[]): void {
   );
 }
 
-async function dryRunPmsCyber(day: string, which: "pms" | "cyber"): Promise<void> {
+async function dryRunPmsCyber(day: string, which: "pms" | "cyber" | "desk"): Promise<void> {
   const period = dailyPeriod(day);
   const reader = new FirestoreSourceReader();
   const now = Date.now();
-  const collector = which === "pms" ? createPmsCollector(reader) : createCyberCollector(reader);
+  const collector = which === "pms" ? createPmsCollector(reader) : which === "desk" ? createDeskCollector(reader) : createCyberCollector(reader);
   console.log(`\n${which.toUpperCase()} dry run for ${day} (money values are integer cents)\n`);
   show(await collector.collect({ period, runId: "dry-run", now }));
   console.log("\nStock snapshot (right now)\n");
-  show(which === "pms" ? await snapshotPms(reader, now, "dry-run") : await snapshotCyber(reader, now, "dry-run"));
-  if (which === "cyber") console.log("\nNo exact WhatsApp values until the usage meter is deployed (absent, not zero).\n");
+  show(which === "pms" ? await snapshotPms(reader, now, "dry-run") : which === "desk" ? await snapshotDesk(reader, now, "dry-run") : await snapshotCyber(reader, now, "dry-run"));
+  if (which === "cyber") console.log("\nNo exact WhatsApp values for days before the usage meter went live (absent, not zero).\n");
   console.log("Nothing was written.\n");
 }
 
 async function main() {
   const day = process.argv[2];
   const which = process.argv[3] || "pay";
-  if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day) || !["pay", "register", "chama", "pms", "cyber"].includes(which)) {
-    console.error("Usage: npm run dry-run -- YYYY-MM-DD [pay|register|chama|pms|cyber]");
+  if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day) || !["pay", "register", "chama", "pms", "cyber", "desk"].includes(which)) {
+    console.error("Usage: npm run dry-run -- YYYY-MM-DD [pay|register|chama|pms|cyber|desk]");
     process.exit(1);
   }
   if (which === "register") await dryRunRegister(day);
   else if (which === "chama") await dryRunChama(day);
-  else if (which === "pms" || which === "cyber") await dryRunPmsCyber(day, which);
+  else if (which === "pms" || which === "cyber" || which === "desk") await dryRunPmsCyber(day, which);
   else await dryRunPay(day);
 }
 

@@ -7,7 +7,7 @@ import { FreshnessBanner } from "./FreshnessBanner";
 
 const NAV: [string, string][] = [
   ["/", "Overview"], ["/money", "Money"], ["/register", "Register"], ["/chama", "Chama"], ["/pms", "Plot Yangu"],
-  ["/cyber", "Cyber"], ["/cross", "Cross-project"], ["/health", "Data health"], ["/catalogue", "Catalogue"],
+  ["/desk", "Samuhia Desk"], ["/cross", "Cross-project"], ["/health", "Data health"], ["/catalogue", "Catalogue"],
 ];
 
 export function Layout() {
@@ -19,7 +19,7 @@ export function Layout() {
       <header className="topbar">
         <div className="topbar-row">
           <button className="btn menu-btn" aria-expanded={open} aria-label="Menu" onClick={() => setOpen(!open)}>☰ Menu</button>
-          <strong className="brand">Cogvana KPIs</strong>
+          <strong className="brand">Samuhia KPIs</strong>
           <details className="user">
             <summary className="btn" title={user.email ?? user.uid}>{(user.email ?? "Account").split("@")[0]}</summary>
             <div className="menu"><div className="small muted">{user.email}<br />role: {role}</div><button className="btn block" onClick={signOut}>Sign out</button></div>

@@ -10,7 +10,7 @@ const USAGE_SELECT = ["inbound", "outbound", "outboundFailed", "sessionsStarted"
 /**
  * Cyber collector: WhatsApp usage only. Everything else Cyber measures is registered as "planned" and not collected.
  *
- * EXACT numbers come from `whatsapp_usage/{YYYY-MM-DD}` (the usage meter in cyber-whatsapp-meter/). When the day's
+ * EXACT numbers come from `whatsapp_usage/{YYYY-MM-DD}` (the usage meter in the CYBER repo, functions/src/utils/whatsapp.usage.ts). When the day's
  * document does not exist, NO exact values are written: absent, not zero. APPROXIMATE numbers come from
  * `whatsapp_sessions` (one short-lived document per phone, `lastActive` in epoch seconds) and work without the meter.
  * Phone numbers are never read: session documents are only counted, and meter users are salted hashes.

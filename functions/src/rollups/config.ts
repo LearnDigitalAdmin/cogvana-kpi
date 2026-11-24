@@ -39,6 +39,7 @@ export const NEW_ACCOUNT_COMPONENTS: Component[] = [
 export const SMS_USED_COMPONENTS: Component[] = [
   { platform: "register", kpiId: "register.sms_tokens_used" },
   { platform: "chama", kpiId: "chama.sms_credits_used" },
+  { platform: "pms", kpiId: "pms.sms_tokens_used" },
 ];
 
 export const SMS_OUTSTANDING_COMPONENTS: Component[] = [
@@ -52,8 +53,8 @@ export const REVENUE_PLATFORMS: ProductPlatform[] = ["pms", "register", "chama",
 
 export const REVENUE_STREAMS = ["commission", "sms", "subscription", "reports", "markup"] as const;
 
-/** Platforms whose SMS net revenue feeds cross.sms_margin (Plot Yangu excluded: usage unknown). */
-export const SMS_MARGIN_PLATFORMS: ProductPlatform[] = ["register", "chama"];
+/** Platforms whose SMS net revenue feeds cross.sms_margin (Plot Yangu joined once its SMS send log was tracked). */
+export const SMS_MARGIN_PLATFORMS: ProductPlatform[] = ["register", "chama", "pms"];
 
 /**
  * KPIs never derived to weekly/monthly: diagnostics, and the freshness KPIs this layer writes daily only.

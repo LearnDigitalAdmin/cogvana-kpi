@@ -6,13 +6,14 @@ import { CROSS_DEFINITIONS } from "./cross";
 import { PAY_DEFINITIONS } from "./pay";
 import { PMS_DEFINITIONS } from "./pms";
 import { CYBER_DEFINITIONS } from "./cyber";
+import { DESK_DEFINITIONS } from "./desk";
 import { REGISTER_DEFINITIONS } from "./register";
 
 /**
  * Seam 2: the KPI registry. Add a platform's KPIs by adding its definitions
  * file here; nothing else changes.
  */
-export const ALL_DEFINITIONS: KpiDefinition[] = [...PAY_DEFINITIONS, ...REGISTER_DEFINITIONS, ...CHAMA_DEFINITIONS, ...PMS_DEFINITIONS, ...CYBER_DEFINITIONS, ...COMPANY_DEFINITIONS, ...CROSS_DEFINITIONS];
+export const ALL_DEFINITIONS: KpiDefinition[] = [...PAY_DEFINITIONS, ...REGISTER_DEFINITIONS, ...CHAMA_DEFINITIONS, ...PMS_DEFINITIONS, ...CYBER_DEFINITIONS, ...DESK_DEFINITIONS, ...COMPANY_DEFINITIONS, ...CROSS_DEFINITIONS];
 
 validateDefinitions(ALL_DEFINITIONS);
 
